@@ -14,30 +14,117 @@ knitr::opts_chunk$set(
 ```
 
 # ContainR
-
+**Work in progress**
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of ContainR is to enable easier container development for computational reproducibility. 
+The goal of ContainR is to enable easier container development for computational reproducibility. At its core a user can run a command `docker_run()` which will launch the `rocker/rstudio` stack into a docker container, port local config and environment settings into the container and activate the active Rstudio project. Wrappers for the basic docker commands allow for ease of starting and stopping the container. 
+
+Included images of the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) stacks can be found by exploring the `data_rocker_table` inside the package. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# library(tidyverse)
-# 
-# data_rocker_table <- utils::data("data_rocker_table")
-# 
-# data_rocker_table %>% 
-#   gt::gt() %>% 
-#   gtExtras::gt_theme_538()
+library(tidyverse)
+library(ContainR)
+
+basic_theme <- function(data, ...){
+  
+  data %>% 
+    gt::tab_style(style = gt::cell_text(size = gt::px(12), 
+                                color = "black", 
+                                #font = google_font("Source Sans Pro"), 
+                                transform = "uppercase"), 
+              locations = gt::cells_column_labels(everything())) %>%
+    gt::opt_all_caps() %>%
+    # add row striping
+    gt::opt_row_striping() %>%
+    # change overall table styling for borders and striping
+    gt::tab_options(
+      table.width = gt::pct(100),
+      heading.align = "left",
+      heading.background.color = "#c6dbef",
+      column_labels.background.color = "#edf8fb",
+      column_labels.border.top.width = gt::px(1),
+      column_labels.border.bottom.width = gt::px(1),
+      column_labels.border.top.color = "black",
+      column_labels.border.bottom.color = "black",
+      column_labels.font.size = "smaller",
+      column_labels.font.weight = "bold",
+      table.border.top.width = gt::px(1),
+      table.border.bottom.width = gt::px(1),
+      table.border.bottom.color = "black",
+      table.border.top.color = "black",
+      data_row.padding = gt::px(1.5),
+      table.font.size = "smaller",
+      table_body.hlines.color = "white",
+      summary_row.padding = gt::px(1),
+      summary_row.background.color = "#edf8fb",
+      row_group.background.color = "#ffffcc",
+      footnotes.background.color = "#edf8fb",
+      source_notes.background.color = "#f6eff7",
+      source_notes.font.size = "8px",
+      footnotes.font.size = "9px",
+      grand_summary_row.background.color = "#66A3A3", 
+      grand_summary_row.text_transform = "uppercase",
+      grand_summary_row.padding = gt::px(1),
+      ...
+    )
+}
+
+data_rocker_table %>%
+  gt::gt() %>%
+  basic_theme()
 ```
 
 
-There are similar packages available such as [dockr](https://github.com/smaakage85/dockr) or [devindocker](https://github.com/ThinkR-open/devindocker) which provide various levels of functionality. We also recommend checking these out to see if these suit your requirements. 
-
 ## Installation
 
-You can install the development version of ContainR from [GitHub](https://github.com/) with:
+You can install the development version of `ContainR` from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
 devtools::install_github("psychtek/ContainR")
 ```
+
+## Note 
+
+The default design of this package allows the user to launch one of the rocker images, and activate the users current working Rstudio project directory. Local R packages are not copied but allow the user to explore a fresh container image. 
+
+The `docker_create()` function is an attempt to make it easier to create a `Dockerfile` by allowing the user to: 
+
+1) choose the rocker base image, 
+
+2) choose to install either the local `loaded` or `installed` packages, 
+
+3) choose to included python. 
+
+```r
+docker_create(dockerfile = "inst/dockerfiles/Dockerfile", 
+    which_pkgs = "loaded", 
+    rocker_name = "verse",
+    include_python = TRUE) 
+
+```
+
+The benefit of this functionality gives the user the choice to build a container image and only include
+packages that are loaded at the time of development. The install scripts also skip any packages already installed. 
+
+The `docker_build()` function will then read the newly created `Dockerfile` and build the image based on the previous user requirements. 
+
+```r
+
+docker_build(dockerfile = "inst/dockerfiles/Dockerfile", 
+                name = "username/custom_image")
+
+```
+
+
+Finally,  `docker_run()` is then run with the user supplied Docker image to launch a Rstudio container in the browser activating the current working project. 
+
+```r
+docker_run()
+
+```
+
+The created `Dockerfile` found in the `inst/dockerfiles/` directory provides a form of metadata for environmental computational reproducibility and, can easily be relaunch with the `docker_run()` command. Although the users local `.config` and `.Renviron` settings are copied when the container is launched, this arent included in the actual docker image. This allows teams to work on the scripts, update the library packages as needed but keep their custom working Rstudio configuration settings private. 
+
+There are similar packages available such as [dockr](https://github.com/smaakage85/dockr) or [devindocker](https://github.com/ThinkR-open/devindocker) which provide various levels of functionality. We also recommend checking these out to see if these suit your requirements. 

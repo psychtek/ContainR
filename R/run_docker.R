@@ -336,9 +336,9 @@ docker_list <- function(){
 #' @export
 docker_run <- function(rocker_name, tag = NULL){
 
-
   # Check for image name
   data_rocker_table <- data_rocker_table
+
   if(!(rocker_name %in% data_rocker_table$name)){
     cli::cli_warn("{.arg rocker_name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
@@ -360,7 +360,7 @@ docker_run <- function(rocker_name, tag = NULL){
 
   print(docker_image)
 
-  cli::cli_h1("Launching Docker Project")
+  cli::cli_h1("Launching Docker Project {.path {docker_image}}")
 
   cli::cli_alert_info("Checking Docker Install")
   docker_check()
@@ -427,7 +427,7 @@ docker_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
                           which_pkgs = c("loaded", "installed"),
                           rocker_name = "rstudio",
                           tag = NULL,
-                          include_python = TRUE){
+                          include_python = FALSE){
 
   cli::cli_h1("Creating Dockerfile")
 
