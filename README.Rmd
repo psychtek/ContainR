@@ -1,0 +1,43 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# ContainR
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of ContainR is to enable easier container development for computational reproducibility. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# library(tidyverse)
+# 
+# data_rocker_table <- utils::data("data_rocker_table")
+# 
+# data_rocker_table %>% 
+#   gt::gt() %>% 
+#   gtExtras::gt_theme_538()
+```
+
+
+There are similar packages available such as [dockr](https://github.com/smaakage85/dockr) or [devindocker](https://github.com/ThinkR-open/devindocker) which provide various levels of functionality. We also recommend checking these out to see if these suit your requirements. 
+
+## Installation
+
+You can install the development version of ContainR from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("psychtek/ContainR")
+```

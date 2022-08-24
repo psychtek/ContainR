@@ -1,0 +1,9 @@
+Name: 🎉 Run docker
+Description: Containerize and render the R Markdown document.
+Binding: docker_run
+Interactive: false
+
+Name: 🎉 Stop docker
+Description: Stop Containerize
+Binding: docker_stop
+Interactive: false
