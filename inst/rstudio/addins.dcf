@@ -1,9 +1,9 @@
-Name: 🎉 Run docker
-Description: Containerize and render the R Markdown document.
-Binding: docker_run
+Name: 🎉 Run rocker
+Description: Run active project in a rstudio rocker container.
+Binding: rocker_run
 Interactive: false
 
-Name: 🎉 Stop docker
-Description: Stop Containerize
-Binding: docker_stop
+Name: 🎉 Stop rocker
+Description: Stop container
+Binding: rocker_stop
 Interactive: false

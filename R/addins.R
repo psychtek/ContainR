@@ -1,12 +1,12 @@
-#' RStudio Addin: Containerize and Render R Markdown Document with Docker
+#' RStudio Addin: Run active project in Rocker Rstudio docker container
 #'
-#' RStudio addin for containerizing and rendering the current document.
+#' RStudio addin for Rocker containers
 #'
 #' @importFrom rstudioapi getActiveDocumentContext
 #'
 #' @keywords internal
-docker_run = function() {
-  docker_run()
+rocker_run = function() {
+  rocker_run()
 }
 
 
@@ -17,6 +17,6 @@ docker_run = function() {
 #' @importFrom rstudioapi getActiveDocumentContext
 #'
 #' @keywords internal
-docker_stop = function() {
-  docker_stop()
+rocker_stop = function() {
+  rocker_stop()
 }

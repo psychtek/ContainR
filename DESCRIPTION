@@ -17,7 +17,6 @@ BugReports: https://github.com/psychtek/containR/issues
 Imports:
     cli,
     rstudioapi,
-    yaml,
     dplyr,
     tidyr,
     magrittr,

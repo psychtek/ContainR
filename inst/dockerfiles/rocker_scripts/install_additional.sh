@@ -59,7 +59,7 @@ Rscript -e "install.packages(c('remotes'), repos='${CRAN_SOURCE}')"
 
 echo -e "Installing Additional R Packages...\n"
 # Additional R libraries
-/rocker_scripts/install_libs_local.sh
+/tmp/install_libs_local.sh
 
 
 # Clean up

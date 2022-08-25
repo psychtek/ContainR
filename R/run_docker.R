@@ -33,8 +33,9 @@ docker_check <- function(){
 }
 
 #' Stop docker session
+#'
 #' @export
-docker_stop <- function(){
+rocker_stop <- function(){
 
   project_name <- basename(rstudioapi::getActiveProject())
 
@@ -47,17 +48,7 @@ docker_stop <- function(){
   cli::cli_alert_success("Done")
 }
 
-#' Create Config File
-#'
-#' Creates a temp .Rprofile and writes a setHook to launch
-#' activate current project in the Rstudio docker container.
-#'
-#'
-#' @importFrom yaml as.yaml
-#'
-#' @param project_name Given name of project. Defaults to repo directory.
-#'
-#' @export
+# Config file
 create_config_file <- function(project_name){
 
   rprofile <-  paste0(tempdir(), "/.Rprofile")
@@ -92,40 +83,35 @@ sep = "\n")
 #' Builds a docker image from a file location
 #'
 #' @param dockerfile Character path to supplied Dockerfile. Save to `inst/dockerfiles`
-#' if one doesnt exists then a Dockerfile can be generated from the `docker_file_create()` function.
+#' if one doesnt exists then a Dockerfile can be generated from the `docker_file()` function.
 #'
 #' @param name Name and or name and tag of container name such as username/image_name
 #'
 #' @export
-docker_build_dockerfile <- function(dockerfile = NULL, name = NULL){
+docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL){
 
-  if(isFALSE(file.exists(dockerfile = "inst/dockerfiles/Dockerfile"))){
-
-    cli::cli_abort("{.path No Dockerfile could be found. Please check your path}")
-
-  }
+  # if(isFALSE(file.exists(dockerfile = "inst/dockerfiles/Dockerfile"))){
+  #
+  #   cli::cli_abort("{.path No Dockerfile could be found. Please check your path}")
+  #
+  # }
 
   if(is.null(name)) {
-    cli::cli_abort("Please supply a name for container")
+    name <- "containr"
   } else {
-    name <- name
+    name <- tolower(name)
   }
-
-  if(is.null(dockerfile)) {
-    cli::cli_abort("Error: No dockerfile supplied")
-  } else {
 
     docker_check()
 
-    build_command <- paste0("docker build -t ", name ," -f ", dockerfile, " .")
-    cli::cli_alert_info("Building  {.path {dockerfile}} as {.emph {name}}")
+    build_command <- paste0("docker build --no-cache=true -t ", name ," -f ", dockerfile, " .")
+    cli::cli_alert_info("Building {.path {dockerfile}} as {.emph {name}}")
     system(build_command)
 
     cli::cli_alert_success("Success!")
 
     system("docker image list")
-
-  }
+    #TODO check package install.R function and libs
 
 }
 
@@ -161,7 +147,6 @@ docker_search <- function(search_string = "rstudio"){
                                                  Description == Stars ~ as.character(NA)))
 
   return(cleaned_results)
-
 
 }
 
@@ -218,30 +203,29 @@ docker_logout <- function(){
 
 }
 
-#' Pull Rocker Image
+#' Pull Rocker Images
 #'
-#' @param rocker_verse Rocker image name from the [data_rocker_table]
-#' @param tag Version tag of rocker image. Will default to local
-#' r version using getRversion.
+#' @param name Rocker image name from the [data_rocker_table]
+#' @param tag Version tag of rocker image. Will default to `latest`
 #'
 #' @export
-docker_pull <- function(rocker_verse, tag = NULL){
+rocker_pull <- function(name, tag = NULL){
 
   # Check for image name
   data_rocker_table <- data_rocker_table
-  if(!(rocker_verse %in% data_rocker_table$name)){
-    cli::cli_warn("{.arg rocker_verse} must be one of: {.emph {data_rocker_table$name}}")
+  if(!(name %in% data_rocker_table$name)){
+    cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
   }
 
   # Set tag
   if(is.null(tag)){
-    tag <- getRversion()
+    tag <- "latest"
   } else {
     tag <- tag
   }
 
-  exec_sys_cmd <- switch(rocker_verse,
+  exec_sys_cmd <- switch(name,
                          rstudio = paste0("docker pull rocker/rstudio:", tag),
                          tidyerse = paste0("docker pull rocker/tidyverse:", tag),
                          verse = paste0("docker pull rocker/verse:", tag),
@@ -256,14 +240,18 @@ docker_pull <- function(rocker_verse, tag = NULL){
 #'
 #'
 #' @export
-docker_list_images <- function(){
+docker_images <- function(){
 
   cli::cli_h1("Container Images")
   sys_cmd <- sys::exec_internal("docker", c("image",  "ls", "-a"))
   sys_to_console(sys_cmd)
 }
 
-docker_list_containers <- function(){
+#' List Docker Images
+#'
+#'
+#' @export
+docker_list <- function(){
 
   cli::cli_h1("Container Images")
   sys_cmd <- sys::exec_internal("docker", c("container",  "ls", "-a"))
@@ -271,7 +259,7 @@ docker_list_containers <- function(){
 }
 
 
-#' Docker run
+#' Rocker run
 #'
 #' Launches current active R project into a rocker container
 #' and opens a browser.
@@ -279,18 +267,19 @@ docker_list_containers <- function(){
 #' @param image Name of rocker image from [data_rocker_table]. Defaults to
 #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
 #' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
-#' this argument with the string of the name of the build.
+#' this argument with the string of the *name* of the build. Built container images can be
+#' view by running `docker_list()` function.
 #'
 #' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
 #'
 #' @export
-docker_run <- function(image = "rstudio", tag = NULL){
+rocker_run <- function(image = "rstudio", tag = NULL){
 
   cli::cli_alert_info("Checking Docker Install...")
   docker_check()
 
   # Checker for image name
-  data_rocker_table <- ContainR::data_rocker_table
+  data_rocker_table <- data_rocker_table
 
   # Set tag
   if(is.null(tag)){
@@ -312,8 +301,8 @@ docker_run <- function(image = "rstudio", tag = NULL){
   } else {
     # If the name isnt one of rocker name then assume custom image
     docker_image <- paste0(image, ":", tag)
-
   }
+
   # TODO check if image is in docker repo
   cli::cli_h1("Launching Docker Project {.path {docker_image}}")
 
@@ -367,59 +356,83 @@ docker_run <- function(image = "rstudio", tag = NULL){
 #' Create a Dockerfile
 #'
 #' This function creates a dockerfile based off the rocker version image stacks and reads
-#' from session information to included `loaded `or `installed` R libraries.
+#' from session information to included `loaded `or `installed` R libraries. the `install2.r` handles
+#' additional package installs and will skip already installed packages on the rocker stack image.
 #'
 #' @param dockerfile Default location is in the `inst/dockerfiles/` folder. Build will save the final `Dockerfile`
-#' to this location. You can also add youre own Dockerfile, however, this package was primarily designed to launch
+#' to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
 #' an active project into a Rstudio container from rocker version.
 #'
 #' @param which_pkgs Provide a string of either `loaded` or `installed`. `Loaded` will included packages that are currently
-#' loaded in your active project session. The `installed` string will included everything inside you local default R library.
+#' loaded in your active project session. The `installed` string will included everything inside you local default R library. Already
+#' installed packages are skipped when the  [docker_build] command is run. If you have a large package library it is
+#' recommended to only install `loaded` as you deveop you workflow.
 #'
-#' @param rocker_name The Rocker name of the stack that you want to build off. To see the current stack options
-#' load the [data_rocker_table]. A character string from the `name` will load the `FROM` command with the associated `image`.
+#' @param name The Rocker name of the stack that you want to build off. To see the current stack options
+#' load the [data_rocker_table].
 #'
-#' @param tag A character string of the require version. If no tag is supplied then the function will get the local
-#' version of R from `getRversion()`,
+#' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
 #'
 #' @param include_python Flag to install python using the rocker scripts \url{https://github.com/rocker-org/rocker-versioned2} which have had minor modifications. Future updates
-#' will see this streamlined.
+#' will see this streamlined. `Pandas` and `numpy` modules are also installed if this flag is set to `TRUE`.
 #'
 #'
 #' @export
-docker_file_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
+docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
                           which_pkgs = c("loaded", "installed"),
-                          rocker_name = "rstudio",
+                          name = "rstudio",
                           tag = NULL,
                           include_python = FALSE){
 
   cli::cli_h1("Creating Dockerfile")
 
   # Check for image name
-  data_rocker_table <- data_rocker_table
+  data_rocker_table <- ContainR::data_rocker_table
 
-  if(!(rocker_name %in% data_rocker_table$name)){
-    cli::cli_warn("{.arg rocker_name} must be one of: {.emph {data_rocker_table$name}}")
+  # File overwrite warning
+  if(file.exists(dockerfile)) {
+    cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
+                           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+
+  }
+
+  # which_pckgs argument check
+  if(!(which_pkgs %in% c("loaded", "installed"))) {
+
+    cli::cli_alert_warning("{.emph which_pkgs} must be of type {.emph loaded} or {.emph installed}",
+                           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+
+    }
+
+  # rocker name match check
+  if(!(name %in% data_rocker_table$name)){
+    cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
   }
 
   # Set tag
   if(is.null(tag)){
-    tag <- getRversion()
+    tag <- "latest"
   } else {
     tag <- tag
   }
 
-  rocker_image <- switch(rocker_name,
+  # Flag for python inclusion
+  if(isTRUE(include_python)) {
+    cli::cli_alert_info("Python Included: {.val {include_python}}")
+  } else if(isFALSE(include_python)) {
+    cli::cli_alert_info("Python Included: {.val {include_python}}")
+  }
+
+  rocker_image <- switch(name,
                          rstudio = paste0("rocker/rstudio:", tag),
                          tidyerse = paste0("rocker/tidyverse:", tag),
                          verse = paste0("rocker/verse:", tag),
                          geospatial = paste0("rocker/geospatial:", tag),
                          binder = paste0("rocker/binder:", tag))
 
-  cli::cli_alert_info("Using Rocker Image: {.path {rocker_image}}")
+  cli::cli_alert_info("Using Rocker Stack: {.path {rocker_image}}")
 
-  cli::cli_alert_info("Creating library list for image...")
   packages <- sessioninfo::package_info(pkgs = which_pkgs)
 
   packs <- dplyr::tibble(Package = packages$package,
@@ -433,17 +446,14 @@ docker_file_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   # TODO check for local and CRAN
   # TODO get version
 
-  # get first lot of packages minus last
-  packs$Package[0 -length(packs$Package)]
-  # get last package name
-  packs$Package[length(packs$Package) - 0]
-
+  # hacky work around
   packs_list <- paste0("\t", packs$Package[0 -length(packs$Package)], " \\")
 
   last_list <- paste0("\t", packs$Package[length(packs$Package) - 0], "")
 
-  bash_file = "inst/rocker_scripts/install_libs_local.sh"
+  bash_file = "inst/dockerfiles/rocker_scripts/install_libs_local.sh"
 
+  # Command layout for bash script
   installR_script <- paste(c(
     paste("#!/bin/bash"),
     paste(""),
@@ -464,7 +474,7 @@ docker_file_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
     paste("\t", "CRAN=$CRAN_SOURCE"),
     paste("fi"),
     paste(""),
-    paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\ "),
+    paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),
     paste(packs_list),
     paste(last_list)
   ),
@@ -473,26 +483,35 @@ docker_file_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   writeLines(installR_script, con = bash_file, sep = "")
 
   if(isTRUE(file.exists(bash_file))){
-    cli::cli_alert_success("Additional libraries updated to file: {.path {bash_file}}")
+    cli::cli_alert_success("Bash file updated: {.path {bash_file}}")
   }
 
+  # command layout for dockerfile
   body <- paste(c(
     paste("FROM", rocker_image),
     # TODO paste("LABEL", "label_name"),
     paste(""),
     if(isTRUE(include_python)) {
       c(
-        paste("COPY", "./rocker_scripts/install_python.sh /tmp/"),
-        paste("COPY", "./rocker_scripts/install_pyenv.sh /tmp/"),
+        paste("COPY", "/inst/dockerfiles/rocker_scripts/install_python.sh /tmp/"),
+        paste(""),
+        paste("COPY", "/inst/dockerfiles/rocker_scripts/install_pyenv.sh /tmp/"),
         paste(""),
         paste("RUN", "chmod +x /tmp/install_python.sh"),
         paste(""),
         paste("RUN", "/tmp/install_python.sh"),
-        paste("RUN", "R -e \"reticulate::py_config()\"")
+        paste(""),
+        paste("RUN", "R -e \"reticulate::py_config()\""),
+        paste("")
       )
     },
+    paste("COPY /inst/dockerfiles/rocker_scripts/install_libs_local.sh /tmp/"),
     paste(""),
-    paste("COPY", "./rocker_scripts/install_additional.sh /tmp/"),
+    paste("COPY /inst/dockerfiles/rocker_scripts/install_additional.sh /tmp/"),
+    paste(""),
+    paste("RUN chmod +x /tmp/install_libs_local.sh"),
+    paste(""),
+    paste("RUN chmod +x /tmp/install_additional.sh"),
     paste(""),
     paste("RUN", "/tmp/install_additional.sh"),
     paste(""),
@@ -503,8 +522,12 @@ docker_file_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   writeLines(body, dockerfile, sep = "")
 
   if(isTRUE(file.exists(dockerfile))){
-    cli::cli_alert_success("Dockerfile saved to: {.path {docker_file}}")
+    cli::cli_alert_success("Dockerfile saved to: {.path {dockerfile}}")
   }
+
+  # Tip to run function next
+  #cli::cli_alert_info("Run: {.emph docker_build_dockerfile(dockerfile = \"{dockerfile}\", name = \"name\")} ")
+
 }
 
 # Console alert helper
