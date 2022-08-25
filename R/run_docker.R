@@ -24,77 +24,11 @@ docker_check <- function(){
     }
 
   } else {
-    dock_vers <- system('docker -v', intern = TRUE)
-    if (grepl('Docker version', dock_vers)) cli::cli_alert_success("{dock_vers}")
+    dock_vers <- sys::exec_internal('docker', '-v')
+    dock_vers_char <- rawToChar(dock_vers$stdout)
+    if (grepl('Docker version', dock_vers_char)) cli::cli_alert_success(dock_vers_char)
 
   }
-
-}
-
-#' Run Replicats RStudio Session
-#'
-#' `docker_run_custom` runs the current active project in a rstudio
-#' container. Present it defaults to the `replicats-docker` image. The session
-#' will also copy the local user .Renviron and rstudio config directory.
-#'
-#' @param docker_image A docker container image to launch current project into.
-#' This defaults to the `psychtek/replicats` which includes rstudio, python and
-#' additional libraries and dependencies.
-#'
-#' @export
-docker_run_custom <- function(docker_image = NULL){
-
-  # TODO change to rocker verse
-  # TODO add option to disable login auth
-
-  if(is.null(docker_image)) {
-    cli::cli_alert_danger("Please supply image")
-
-    #docker_image = "psychtek/replicats"  #"rocker/rstudio"
-  }
-
-  cli::cli_h1("Launching Docker Project")
-
-  cli::cli_alert_info("Checking Docker Install")
-  docker_check()
-
-  # Setup names and projec paths
-  project_name <-  basename(rstudioapi::getActiveProject())
-  cli::cli_alert_info("Setting Project to: {.path {project_name}}")
-
-  # get working directory from local and set to repo directory
-  project_dir <- getwd()
-  cli::cli_alert_info("Working Directory Set to: {.path {project_dir}}")
-
-  #Copying .Renviron
-  local_r_env <- paste0(Sys.getenv("HOME"), "/.Renviron")
-  cli::cli_alert_info("Copying R Secrets: {.path {local_r_env}}")
-
-  #Copy preferences stored in /inst/prefs
-  rstudio_prefs <- paste0(Sys.getenv("HOME"), "/.config/rstudio")
-  cli::cli_alert_info("R Session config copied from: {.path {rstudio_prefs}}")
-
-  # set rprofile inside container to active project
-  rprof_file <- create_config_file(project_name = project_name)
-  #rprof_file <- "/Users/awwillc/Repos/replicats/inst/docker/.Rprofile"
-  cli::cli_alert_info("R Profile copied from temp: {.path {rprof_file}}")
-
-  # Docker launch command
-  execute_docker_cmd <- paste0("docker run -d --rm -ti -e DISABLE_AUTH=true -p 127.0.0.1:8787:8787",
-                               # " -v ", "/home/rstudio",
-                               " -v ", project_dir, ":/home/rstudio/", project_name,
-                               " -v ", rstudio_prefs, ":/home/rstudio/.config/rstudio",
-                               " -v ", local_r_env, ":/home/rstudio/.Renviron",
-                               " -v ", rprof_file, ":/home/rstudio/.Rprofile",
-                               " --name ", project_name,
-                               " ", docker_image)
-
-  system(execute_docker_cmd)
-
-  cli::cli_alert_info("Launching {.path {project_name}} in you browser...")
-  utils::browseURL("http://localhost:8787")
-
-  system("docker ps -a")
 
 }
 
@@ -105,9 +39,8 @@ docker_stop <- function(){
   project_name <- basename(rstudioapi::getActiveProject())
 
   cli::cli_h1("Stopping {.path {project_name}} container")
-  #Sys.sleep(3)
 
-  cmd_execute <-paste0("docker stop ", project_name)
+  cmd_execute <- paste0("docker stop ", project_name)
 
   system(cmd_execute)
 
@@ -115,6 +48,9 @@ docker_stop <- function(){
 }
 
 #' Create Config File
+#'
+#' Creates a temp .Rprofile and writes a setHook to launch
+#' activate current project in the Rstudio docker container.
 #'
 #'
 #' @importFrom yaml as.yaml
@@ -144,6 +80,7 @@ create_config_file <- function(project_name){
 con = rprofile,
 sep = "\n")
 
+  # check to ensure the temp profile was created
   if(isTRUE(file.exists(rprofile))) cli::cli_alert_success(".Rprofile Created")
 
   return(rprofile)
@@ -155,12 +92,12 @@ sep = "\n")
 #' Builds a docker image from a file location
 #'
 #' @param dockerfile Character path to supplied Dockerfile. Save to `inst/dockerfiles`
-#' if one doesnt exists then a Dockerfile can be generated from the `docker_build` function.
+#' if one doesnt exists then a Dockerfile can be generated from the `docker_file_create()` function.
 #'
 #' @param name Name and or name and tag of container name such as username/image_name
 #'
 #' @export
-docker_build <- function(dockerfile = NULL, name = NULL){
+docker_build_dockerfile <- function(dockerfile = NULL, name = NULL){
 
   if(isFALSE(file.exists(dockerfile = "inst/dockerfiles/Dockerfile"))){
 
@@ -276,7 +213,8 @@ docker_logout <- function(){
 
   cli::cli_h1("Docker Logout")
 
-  system("docker logout")
+  sys_cmd <- sys::exec_internal("docker", "logout")
+  sys_to_console(sys_cmd)
 
 }
 
@@ -318,10 +256,18 @@ docker_pull <- function(rocker_verse, tag = NULL){
 #'
 #'
 #' @export
-docker_list <- function(){
+docker_list_images <- function(){
 
-  cli::cli_h1("Images Pulled")
-  system("docker image ls -a")
+  cli::cli_h1("Container Images")
+  sys_cmd <- sys::exec_internal("docker", c("image",  "ls", "-a"))
+  sys_to_console(sys_cmd)
+}
+
+docker_list_containers <- function(){
+
+  cli::cli_h1("Container Images")
+  sys_cmd <- sys::exec_internal("docker", c("container",  "ls", "-a"))
+  sys_to_console(sys_cmd)
 }
 
 
@@ -330,19 +276,21 @@ docker_list <- function(){
 #' Launches current active R project into a rocker container
 #' and opens a browser.
 #'
-#' @param rocker_name Name of rocker image from [data_rocker_table]
-#' @param tag version number or use local R
+#' @param image Name of rocker image from [data_rocker_table]. Defaults to
+#' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
+#' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
+#' this argument with the string of the name of the build.
+#'
+#' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
 #'
 #' @export
-docker_run <- function(rocker_name, tag = NULL){
+docker_run <- function(image = "rstudio", tag = NULL){
 
-  # Check for image name
-  data_rocker_table <- data_rocker_table
+  cli::cli_alert_info("Checking Docker Install...")
+  docker_check()
 
-  if(!(rocker_name %in% data_rocker_table$name)){
-    cli::cli_warn("{.arg rocker_name} must be one of: {.emph {data_rocker_table$name}}")
-    print(data_rocker_table)
-  }
+  # Checker for image name
+  data_rocker_table <- ContainR::data_rocker_table
 
   # Set tag
   if(is.null(tag)){
@@ -351,19 +299,23 @@ docker_run <- function(rocker_name, tag = NULL){
     tag <- tag
   }
 
-  docker_image <- switch(rocker_name,
-                         rstudio = paste0("rocker/rstudio:", tag),
-                         tidyerse = paste0("rocker/tidyverse:", tag),
-                         verse = paste0("rocker/verse:", tag),
-                         geospatial = paste0("rocker/geospatial:", tag),
-                         binder = paste0("rocker/binder:", tag))
 
-  print(docker_image)
+  if((image %in% data_rocker_table$name)){
+    # Switch for changing rocker image based on image name
+    docker_image <- switch(image,
+                           rstudio = paste0("rocker/rstudio:", tag),
+                           tidyerse = paste0("rocker/tidyverse:", tag),
+                           verse = paste0("rocker/verse:", tag),
+                           geospatial = paste0("rocker/geospatial:", tag),
+                           binder = paste0("rocker/binder:", tag))
 
+  } else {
+    # If the name isnt one of rocker name then assume custom image
+    docker_image <- paste0(image, ":", tag)
+
+  }
+  # TODO check if image is in docker repo
   cli::cli_h1("Launching Docker Project {.path {docker_image}}")
-
-  cli::cli_alert_info("Checking Docker Install")
-  docker_check()
 
   # Setup names and projec paths
   project_name <-  basename(rstudioapi::getActiveProject())
@@ -375,35 +327,47 @@ docker_run <- function(rocker_name, tag = NULL){
 
   #Copying .Renviron
   local_r_env <- paste0(Sys.getenv("HOME"), "/.Renviron")
-  cli::cli_alert_info("Copying R Secrets: {.path {local_r_env}}")
+  cli::cli_alert_info("Cloning .Renviron : {.path {local_r_env}}")
 
   #Copy preferences stored in /inst/prefs
   rstudio_prefs <- paste0(Sys.getenv("HOME"), "/.config/rstudio")
-  cli::cli_alert_info("R Session config copied from: {.path {rstudio_prefs}}")
+  cli::cli_alert_info("R Settings Cloned from: {.path {rstudio_prefs}}")
 
   # set rprofile inside container to active project
   rprof_file <- create_config_file(project_name = project_name)
   #rprof_file <- "/Users/awwillc/Repos/replicats/inst/docker/.Rprofile"
-  cli::cli_alert_info("R Profile copied from temp: {.path {rprof_file}}")
+  cli::cli_alert_info("Cloning temp: {.path {rprof_file}}")
 
   # # Docker launch command
-  exec_sys_cmd <- paste0("docker run -d --rm -ti -e DISABLE_AUTH=true -p 127.0.0.1:8787:8787",
-                         # " -v ", "/home/rstudio",
-                         " -v ", project_dir, ":/home/rstudio/", project_name,
-                         " -v ", rstudio_prefs, ":/home/rstudio/.config/rstudio",
-                         " -v ", local_r_env, ":/home/rstudio/.Renviron",
-                         " -v ", rprof_file, ":/home/rstudio/.Rprofile",
-                         " --name ", project_name,
-                         " ", docker_image)
+  # --rm remove the container automatically after it exits
+  # TODO allow for different run commands
+  AUTH = TRUE
+  exec_sys_cmd <- paste0(c(
+    paste0("docker run -d --rm -ti"),
+    paste0(" -e DISABLE_AUTH=", ifelse(isTRUE(AUTH), AUTH, "FALSE"), sep = ""),
+    paste0(" -p 127.0.0.1:8787:8787"),
+    paste0(" -v ", project_dir, ":/home/rstudio/", project_name, sep = ""),
+    paste0(" -v ", rstudio_prefs, ":/home/rstudio/.config/rstudio", sep = ""),
+    paste0(" -v ", local_r_env, ":/home/rstudio/.Renviron", sep = ""),
+    paste0(" -v ", rprof_file, ":/home/rstudio/.Rprofile", sep = ""),
+    paste0(" --name ", project_name),
+    paste0(" ", docker_image)
+  ), collapse = "")
 
-  print(exec_sys_cmd)
+  cli::cli_alert_info("{.emph Running Command: } {exec_sys_cmd}",
+                      class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+
+  system(exec_sys_cmd)
+
+  cli::cli_alert_info("Launching {.path {project_name}} in you browser...")
+  utils::browseURL("http://localhost:8787")
 
 }
 
 #' Create a Dockerfile
 #'
 #' This function creates a dockerfile based off the rocker version image stacks and reads
-#' from session information to included loaded or installed R libraries.
+#' from session information to included `loaded `or `installed` R libraries.
 #'
 #' @param dockerfile Default location is in the `inst/dockerfiles/` folder. Build will save the final `Dockerfile`
 #' to this location. You can also add youre own Dockerfile, however, this package was primarily designed to launch
@@ -423,7 +387,7 @@ docker_run <- function(rocker_name, tag = NULL){
 #'
 #'
 #' @export
-docker_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
+docker_file_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
                           which_pkgs = c("loaded", "installed"),
                           rocker_name = "rstudio",
                           tag = NULL,
@@ -433,6 +397,7 @@ docker_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 
   # Check for image name
   data_rocker_table <- data_rocker_table
+
   if(!(rocker_name %in% data_rocker_table$name)){
     cli::cli_warn("{.arg rocker_name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
@@ -540,4 +505,17 @@ docker_create <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   if(isTRUE(file.exists(dockerfile))){
     cli::cli_alert_success("Dockerfile saved to: {.path {docker_file}}")
   }
+}
+
+# Console alert helper
+sys_to_console <- function(x){
+
+  if(x$status == 1){
+    cli::cli_alert_danger("Error")
+  } else {
+    cap_out <- rawToChar(x$stdout)
+    cli::cli_alert_info(cap_out)
+
+  }
+
 }

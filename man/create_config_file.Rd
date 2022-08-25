@@ -10,5 +10,6 @@ create_config_file(project_name)
 \item{project_name}{Given name of project. Defaults to repo directory.}
 }
 \description{
-Create Config File
+Creates a temp .Rprofile and writes a setHook to launch
+activate current project in the Rstudio docker container.
 }

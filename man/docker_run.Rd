@@ -4,14 +4,17 @@
 \alias{docker_run}
 \title{RStudio Addin: Containerize and Render R Markdown Document with Docker}
 \usage{
-docker_run(rocker_name, tag = NULL)
+docker_run(image = "rstudio", tag = NULL)
 
-docker_run(rocker_name, tag = NULL)
+docker_run(image = "rstudio", tag = NULL)
 }
 \arguments{
-\item{rocker_name}{Name of rocker image from \link{data_rocker_table}}
+\item{image}{Name of rocker image from \link{data_rocker_table}. Defaults to
+the \code{rstudio} stack \code{rocker/rstudio:latest}. For more information about each stack
+visit \url{https://rocker-project.org/images/}. If you ran \code{docker_build()} then supply
+this argument with the string of the name of the build.}
 
-\item{tag}{version number or use local R}
+\item{tag}{Version number of stack. Defaults to the \verb{:latest} tag if none is supplied.}
 }
 \description{
 RStudio addin for containerizing and rendering the current document.

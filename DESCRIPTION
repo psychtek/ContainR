@@ -22,7 +22,8 @@ Imports:
     tidyr,
     magrittr,
     sessioninfo,
-    crayon
+    crayon,
+    sys
 Depends: 
     R (>= 2.10)
 LazyData: true
