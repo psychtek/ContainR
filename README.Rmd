@@ -23,56 +23,9 @@ The goal of ContainR is to enable easier container development for computational
 Included images of the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) stacks can be found by exploring the `data_rocker_table` inside the package. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-library(tidyverse)
 library(ContainR)
 
-basic_theme <- function(data, ...){
-  
-  data %>% 
-    gt::tab_style(style = gt::cell_text(size = gt::px(12), 
-                                color = "black", 
-                                #font = google_font("Source Sans Pro"), 
-                                transform = "uppercase"), 
-              locations = gt::cells_column_labels(everything())) %>%
-    gt::opt_all_caps() %>%
-    # add row striping
-    gt::opt_row_striping() %>%
-    # change overall table styling for borders and striping
-    gt::tab_options(
-      table.width = gt::pct(100),
-      heading.align = "left",
-      heading.background.color = "#c6dbef",
-      column_labels.background.color = "#edf8fb",
-      column_labels.border.top.width = gt::px(1),
-      column_labels.border.bottom.width = gt::px(1),
-      column_labels.border.top.color = "black",
-      column_labels.border.bottom.color = "black",
-      column_labels.font.size = "smaller",
-      column_labels.font.weight = "bold",
-      table.border.top.width = gt::px(1),
-      table.border.bottom.width = gt::px(1),
-      table.border.bottom.color = "black",
-      table.border.top.color = "black",
-      data_row.padding = gt::px(1.5),
-      table.font.size = "smaller",
-      table_body.hlines.color = "white",
-      summary_row.padding = gt::px(1),
-      summary_row.background.color = "#edf8fb",
-      row_group.background.color = "#ffffcc",
-      footnotes.background.color = "#edf8fb",
-      source_notes.background.color = "#f6eff7",
-      source_notes.font.size = "8px",
-      footnotes.font.size = "9px",
-      grand_summary_row.background.color = "#66A3A3", 
-      grand_summary_row.text_transform = "uppercase",
-      grand_summary_row.padding = gt::px(1),
-      ...
-    )
-}
-
-data_rocker_table %>%
-  gt::gt() %>%
-  basic_theme()
+data_rocker_table
 ```
 
 
