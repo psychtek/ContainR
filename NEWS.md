@@ -1,5 +1,17 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# ContainR 0.1.1
+
+- Updated bash file paths.
+- Moved scripts to dockfiles dir.
+- `docker_run` now `rocker_run` to reflect nature of core function.
+- Fix readme.
+- Updated `docker_run` commands.
+- Increased documentation.
+- removed `docker_run_custom`. User images can now be used in the `docker_run` function.
+- Docker functions for listing images and containers updated.
+
+
 # ContainR 0.1.0
 
 - Updated `docker_run` commands.
