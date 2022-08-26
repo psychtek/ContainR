@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
 ```
 
 # ContainR *Work in progress*
-
+<img src="inst/figures/ContainR.png" alt="Alt text" width="10%"/>
 <!-- badges: start -->
 <!-- badges: end -->
 

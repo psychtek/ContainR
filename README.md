@@ -3,8 +3,8 @@
 
 # ContainR *Work in progress*
 
-<!-- badges: start -->
-<!-- badges: end -->
+<img src="inst/figures/ContainR.png" alt="Alt text" width="10%"/>
+<!-- badges: start --> <!-- badges: end -->
 
 A set of functions that I found handy during development of the
 repliCATS pipeline. The goal of ContainR is to enable easier container
