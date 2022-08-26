@@ -1,5 +1,10 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# ContainR 0.1.2
+
+- Hacky installed of any packages that are needed to be installed from Github that are not on CRAN.
+
+
 # ContainR 0.1.1
 
 - Updated bash file paths.
