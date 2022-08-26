@@ -304,7 +304,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
   }
 
   # TODO check if image is in docker repo
-  cli::cli_h1("Launching Docker Project {.path {docker_image}}")
+  cli::cli_h1("Launching Container {.path {docker_image}}")
 
   # Setup names and projec paths
   project_name <-  basename(rstudioapi::getActiveProject())
@@ -368,7 +368,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #' installed packages are skipped when the  [docker_build] command is run. If you have a large package library it is
 #' recommended to only install `loaded` as you deveop you workflow.
 #'
-#' @param name The Rocker name of the stack that you want to build off. To see the current stack options
+#' @param name The Rocker name of the stack that you want to build. To see the current stack options
 #' load the [data_rocker_table].
 #'
 #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
@@ -379,8 +379,8 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #'
 #' @export
 docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
-                          which_pkgs = c("loaded", "installed"),
-                          name = "rstudio",
+                          which_pkgs = c("loaded", "installed", "none"),
+                          name = c("rstudio", "tidyerse", "verse", "geospatial", "binder"),
                           tag = NULL,
                           include_python = FALSE){
 
@@ -397,9 +397,9 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   }
 
   # which_pckgs argument check
-  if(!(which_pkgs %in% c("loaded", "installed"))) {
+  if(!(which_pkgs %in% c("loaded", "installed", "none"))) {
 
-    cli::cli_alert_warning("{.emph which_pkgs} must be of type {.emph loaded} or {.emph installed}",
+    cli::cli_alert_warning("{.emph which_pkgs} must be of type {.emph loaded} or {.emph installed} or {.emph none}",
                            class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
     }
@@ -435,59 +435,12 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 
   packages <- sessioninfo::package_info(pkgs = which_pkgs)
 
-  packs <- dplyr::tibble(Package = packages$package,
-                         Version = packages$ondiskversion,
-                         Source = packages$source)
-
-  cli::cli_alert_info("{.path {nrow(packs)}} lib{?s} from {.var {which_pkgs}}")
-  cli::cli_alert_info("Including: {.val {packs$Package}}")
-
-
-  # TODO check for local and CRAN
-  # TODO get version
-
-  # hacky work around
-  packs_list <- paste0("\t", packs$Package[0 -length(packs$Package)], " \\")
-
-  last_list <- paste0("\t", packs$Package[length(packs$Package) - 0], "")
-
-  bash_file = "inst/dockerfiles/rocker_scripts/install_libs_local.sh"
-
-  # Command layout for bash script
-  installR_script <- paste(c(
-    paste("#!/bin/bash"),
-    paste(""),
-    paste("set -e"),
-    paste(""),
-    paste("NCPUS=${NCPUS:--1}"),
-    paste(""),
-    paste("CRAN=${1:-${CRAN:-\"https://cran.r-project.org\"}}"),
-    paste(""),
-    paste("ARCH=$(uname -m)"),
-    paste(""),
-    paste("export DEBIAN_FRONTEND=noninteractive"),
-    paste(""),
-    paste("UBUNTU_VERSION=$(lsb_release -sc)"),
-    paste("CRAN_SOURCE=${CRAN/\"__linux__/$UBUNTU_VERSION/\"/\"\"}"),
-    paste(""),
-    paste("if [ \"$ARCH\" = \"aarch64\" ]; then"),
-    paste("\t", "CRAN=$CRAN_SOURCE"),
-    paste("fi"),
-    paste(""),
-    paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),
-    paste(packs_list),
-    paste(last_list)
-  ),
-  collapse = "\n")
-
-  writeLines(installR_script, con = bash_file, sep = "")
-
-  if(isTRUE(file.exists(bash_file))){
-    cli::cli_alert_success("Bash file updated: {.path {bash_file}}")
+  if(which_pkgs != "none") {
+    write_install_bash_file(x = packages)
   }
 
   # command layout for dockerfile
-  body <- paste(c(
+  docker_cmds <- paste(c(
     paste("FROM", rocker_image),
     # TODO paste("LABEL", "label_name"),
     paste(""),
@@ -513,13 +466,11 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
     paste(""),
     paste("RUN chmod +x /tmp/install_additional.sh"),
     paste(""),
-    paste("RUN", "/tmp/install_additional.sh"),
-    paste(""),
-    paste("RUN", "R -e \"sessioninfo::platform_info()\"")
+    paste("RUN", "/tmp/install_additional.sh")
   ),
   collapse = "\n")
 
-  writeLines(body, dockerfile, sep = "")
+  writeLines(docker_cmds, dockerfile, sep = "")
 
   if(isTRUE(file.exists(dockerfile))){
     cli::cli_alert_success("Dockerfile saved to: {.path {dockerfile}}")
@@ -527,6 +478,28 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 
   # Tip to run function next
   #cli::cli_alert_info("Run: {.emph docker_build_dockerfile(dockerfile = \"{dockerfile}\", name = \"name\")} ")
+
+}
+
+#' Docker push images
+#'
+#' Push and image to docker hub
+#'
+#' @param name The user/name of the docker image
+#' @param tag Version or tag of image. Defaults to latest.
+#'
+#' @export
+docker_push <- function(name, tag){
+
+  cli::cli_h1("Docker Push Image")
+  #docker_login()
+
+  sys_cmd <- paste0("docker push ", name, ":", tag)
+
+  cli::cli_alert_warning("{.emph {sys_cmd}}",
+                         class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+
+  print(sys_cmd)
 
 }
 
@@ -540,5 +513,84 @@ sys_to_console <- function(x){
     cli::cli_alert_info(cap_out)
 
   }
+
+}
+
+
+write_install_bash_file <- function(x){
+
+  packages <- x
+
+  packs <- dplyr::tibble(Package = packages$package,
+                         Version = packages$ondiskversion,
+                         Source = packages$source)
+
+  # hacky work around
+  CRAN_packs <- packs |>
+    dplyr::filter(Source == stringr::str_match_all(Source,
+                                                   pattern = "CRAN \\(R \\d.\\d.\\d\\)"))
+
+  cli::cli_alert_info("{.path {nrow(CRAN_packs)}} lib{?s} from {.var {which_pkgs}}")
+  cli::cli_alert_info("Including: {.val {CRAN_packs$Package}}")
+
+  cran_packs_first <- paste0("\t", CRAN_packs$Package[0 -length(CRAN_packs$Package)], " \\")
+  cran_packs_last <- paste0("\t", CRAN_packs$Package[length(CRAN_packs$Package) - 0], "")
+
+  GITHUB_packs <- packs |>
+    dplyr::filter(Source != stringr::str_match_all(Source,
+                                                   pattern = "CRAN \\(R \\d.\\d.\\d\\)")) |>
+    dplyr::filter(Source != "local") |>
+    dplyr::filter(Source == stringr::str_match_all(Source,
+                                                   pattern = "Github \\(\\w+/\\w+@[0-9A-Za-z]+\\)"))
+
+  github_installs <- GITHUB_packs |>
+    dplyr::mutate(Source = stringr::str_extract_all(Source,
+                                                    pattern = "\\w+/\\w+",
+                                                    simplify = TRUE)) |>
+    dplyr::select(Source) |>
+    purrr::pluck("Source")
+
+  cli::cli_alert_info("Including {.path {nrow(GITHUB_packs)}} GitHub Package{?s}")
+  cli::cli_alert_info("Including: {.val {GITHUB_packs$Package}}")
+
+  bash_file = "inst/dockerfiles/rocker_scripts/install_libs_local.sh"
+
+  # Command layout for bash script
+  installR_script <- paste(c(
+    paste("#!/bin/bash"),
+    paste(""),
+    paste("set -e"),
+    paste(""),
+    paste("NCPUS=${NCPUS:--1}"),
+    paste(""),
+    paste("CRAN=${1:-${CRAN:-\"https://cran.r-project.org\"}}"),
+    paste(""),
+    paste("ARCH=$(uname -m)"),
+    paste(""),
+    paste("export DEBIAN_FRONTEND=noninteractive"),
+    paste(""),
+    paste("UBUNTU_VERSION=$(lsb_release -sc)"),
+    paste("CRAN_SOURCE=${CRAN/\"__linux__/$UBUNTU_VERSION/\"/\"\"}"),
+    paste(""),
+    paste("if [ \"$ARCH\" = \"aarch64\" ]; then"),
+    paste("\t", "CRAN=$CRAN_SOURCE"),
+    paste("fi"),
+    paste(""),
+    if(length(github_installs) > 0) {
+      c(paste("Rscript -e", paste("\"remotes::install_github(\'", github_installs , "\')\" ", sep = "") ," "))
+    },
+    paste(""),
+    paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),
+    paste(cran_packs_first),
+    paste(cran_packs_last)
+  ),
+  collapse = "\n")
+
+  writeLines(installR_script, con = bash_file, sep = "")
+
+  if(isTRUE(file.exists(bash_file))){
+    cli::cli_alert_success("Bash file updated: {.path {bash_file}}")
+  }
+
 
 }

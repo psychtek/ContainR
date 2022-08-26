@@ -6,8 +6,8 @@
 \usage{
 docker_file(
   dockerfile = "inst/dockerfiles/Dockerfile",
-  which_pkgs = c("loaded", "installed"),
-  name = "rstudio",
+  which_pkgs = c("loaded", "installed", "none"),
+  name = c("rstudio", "tidyerse", "verse", "geospatial", "binder"),
   tag = NULL,
   include_python = FALSE
 )
@@ -22,7 +22,7 @@ loaded in your active project session. The \code{installed} string will included
 installed packages are skipped when the  \link{docker_build} command is run. If you have a large package library it is
 recommended to only install \code{loaded} as you deveop you workflow.}
 
-\item{name}{The Rocker name of the stack that you want to build off. To see the current stack options
+\item{name}{The Rocker name of the stack that you want to build. To see the current stack options
 load the \link{data_rocker_table}.}
 
 \item{tag}{A character string of the require version. If no tag is supplied then the function will default to \code{latest}.}
