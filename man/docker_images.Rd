@@ -7,5 +7,5 @@
 docker_images()
 }
 \description{
-List Docker Images
+A basic system wrapper for equiv terminal command
 }

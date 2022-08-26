@@ -15,7 +15,7 @@ docker_file(
 \arguments{
 \item{dockerfile}{Default location is in the \verb{inst/dockerfiles/} folder. Build will save the final \code{Dockerfile}
 to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-an active project into a Rstudio container from rocker version.}
+an active project into a Rstudio container from on of the Rocker images: \url{https://rocker-project.org/images/}}
 
 \item{which_pkgs}{Provide a string of either \code{loaded} or \code{installed}. \code{Loaded} will included packages that are currently
 loaded in your active project session. The \code{installed} string will included everything inside you local default R library. Already
@@ -32,6 +32,6 @@ will see this streamlined. \code{Pandas} and \code{numpy} modules are also insta
 }
 \description{
 This function creates a dockerfile based off the rocker version image stacks and reads
-from session information to included \code{loaded }or \code{installed} R libraries. the \code{install2.r} handles
+from session information to included \code{loaded }, \code{installed} \(or \code{none}\) R libraries. the \code{install2.r} handles
 additional package installs and will skip already installed packages on the rocker stack image.
 }

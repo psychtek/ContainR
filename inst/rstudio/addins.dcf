@@ -1,4 +1,4 @@
-Name: 🎉 Run rocker
+Name: 🎉 Run Project in Rocker(Rstudio)
 Description: Run active project in a rstudio rocker container.
 Binding: rocker_run
 Interactive: false

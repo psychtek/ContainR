@@ -48,36 +48,6 @@ rocker_stop <- function(){
   cli::cli_alert_success("Done")
 }
 
-# Config file
-create_config_file <- function(project_name){
-
-  rprofile <-  paste0(tempdir(), "/.Rprofile")
-
-  project_name <- basename(rstudioapi::getActiveProject())
-
-  work_directory <- paste0("setwd(\"/home/rstudio/", project_name, "\")")
-
-  writeLines(
-    c(".First <- function() {",
-      work_directory,
-      "setHook(\"rstudio.sessionInit\", function(newSession) {
-    if (newSession && is.null(rstudioapi::getActiveProject()))
-      rstudioapi::openProject(rstudioapi::initializeProject())
-  }, action = \"append\")
-
-  invisible(TRUE)
-
-}"),
-con = rprofile,
-sep = "\n")
-
-  # check to ensure the temp profile was created
-  if(isTRUE(file.exists(rprofile))) cli::cli_alert_success(".Rprofile Created")
-
-  return(rprofile)
-
-}
-
 #' Docker build
 #'
 #' Builds a docker image from a file location
@@ -90,11 +60,12 @@ sep = "\n")
 #' @export
 docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL){
 
-  # if(isFALSE(file.exists(dockerfile = "inst/dockerfiles/Dockerfile"))){
-  #
-  #   cli::cli_abort("{.path No Dockerfile could be found. Please check your path}")
-  #
-  # }
+  docker_check()
+
+  if(isFALSE(file.exists(dockerfile = "inst/dockerfiles/Dockerfile"))){
+    cli::cli_abort("No Dockerfile could be found. Please check your path or run:
+                  {.fun ContainR::docker_file}")
+  }
 
   if(is.null(name)) {
     name <- "containr"
@@ -102,16 +73,15 @@ docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL
     name <- tolower(name)
   }
 
-    docker_check()
 
-    build_command <- paste0("docker build --no-cache=true -t ", name ," -f ", dockerfile, " .")
-    cli::cli_alert_info("Building {.path {dockerfile}} as {.emph {name}}")
-    system(build_command)
 
-    cli::cli_alert_success("Success!")
+  build_command <- paste0("docker build --no-cache=true -t ", name ," -f ", dockerfile, " .")
+  cli::cli_alert_info("Building {.path {dockerfile}} as {.emph {name}}")
+  system(build_command)
 
-    system("docker image list")
-    #TODO check package install.R function and libs
+  cli::cli_alert_success("Success!")
+
+  system("docker image list")
 
 }
 
@@ -212,7 +182,7 @@ docker_logout <- function(){
 rocker_pull <- function(name, tag = NULL){
 
   # Check for image name
-  data_rocker_table <- data_rocker_table
+  data_rocker_table <- ContainR::data_rocker_table
   if(!(name %in% data_rocker_table$name)){
     cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
@@ -238,6 +208,7 @@ rocker_pull <- function(name, tag = NULL){
 
 #' List Docker Images
 #'
+#' A basic system wrapper for equiv terminal command
 #'
 #' @export
 docker_images <- function(){
@@ -249,6 +220,7 @@ docker_images <- function(){
 
 #' List Docker Images
 #'
+#' A basic system wrapper for equiv terminal command
 #'
 #' @export
 docker_list <- function(){
@@ -268,7 +240,7 @@ docker_list <- function(){
 #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
 #' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
 #' this argument with the string of the *name* of the build. Built container images can be
-#' view by running `docker_list()` function.
+#' view by running the `docker_list()` function.
 #'
 #' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
 #'
@@ -279,7 +251,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
   docker_check()
 
   # Checker for image name
-  data_rocker_table <- data_rocker_table
+  data_rocker_table <- ContainR::data_rocker_table
 
   # Set tag
   if(is.null(tag)){
@@ -356,12 +328,12 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #' Create a Dockerfile
 #'
 #' This function creates a dockerfile based off the rocker version image stacks and reads
-#' from session information to included `loaded `or `installed` R libraries. the `install2.r` handles
+#' from session information to included `loaded `, `installed` \(or `none`\) R libraries. the `install2.r` handles
 #' additional package installs and will skip already installed packages on the rocker stack image.
 #'
 #' @param dockerfile Default location is in the `inst/dockerfiles/` folder. Build will save the final `Dockerfile`
 #' to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-#' an active project into a Rstudio container from rocker version.
+#' an active project into a Rstudio container from on of the Rocker images: \url{https://rocker-project.org/images/}
 #'
 #' @param which_pkgs Provide a string of either `loaded` or `installed`. `Loaded` will included packages that are currently
 #' loaded in your active project session. The `installed` string will included everything inside you local default R library. Already
@@ -496,10 +468,15 @@ docker_push <- function(name, tag){
 
   sys_cmd <- paste0("docker push ", name, ":", tag)
 
-  cli::cli_alert_warning("{.emph {sys_cmd}}",
+  cli::cli_alert_info("I know. You were expecting this function to work.
+                      Im sorry to dissapoint {.emph buuuut} we are working on it!!",
                          class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
-  print(sys_cmd)
+
+  # cli::cli_alert_warning("{.emph {sys_cmd}}",
+  #                        class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+  #
+  # print(sys_cmd)
 
 }
 
@@ -516,10 +493,11 @@ sys_to_console <- function(x){
 
 }
 
-
+# Write the install bash file
 write_install_bash_file <- function(x){
 
   packages <- x
+  Source <- NULL
 
   packs <- dplyr::tibble(Package = packages$package,
                          Version = packages$ondiskversion,
@@ -592,5 +570,35 @@ write_install_bash_file <- function(x){
     cli::cli_alert_success("Bash file updated: {.path {bash_file}}")
   }
 
+
+}
+
+# Config file
+create_config_file <- function(project_name){
+
+  rprofile <-  paste0(tempdir(), "/.Rprofile")
+
+  project_name <- basename(rstudioapi::getActiveProject())
+
+  work_directory <- paste0("setwd(\"/home/rstudio/", project_name, "\")")
+
+  writeLines(
+    c(".First <- function() {",
+      work_directory,
+      "setHook(\"rstudio.sessionInit\", function(newSession) {
+    if (newSession && is.null(rstudioapi::getActiveProject()))
+      rstudioapi::openProject(rstudioapi::initializeProject())
+  }, action = \"append\")
+
+  invisible(TRUE)
+
+}"),
+con = rprofile,
+sep = "\n")
+
+  # check to ensure the temp profile was created
+  if(isTRUE(file.exists(rprofile))) cli::cli_alert_success(".Rprofile Created")
+
+  return(rprofile)
 
 }
