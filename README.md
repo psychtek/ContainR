@@ -5,13 +5,16 @@
 
 **Work in progress** <!-- badges: start --> <!-- badges: end -->
 
-The goal of ContainR is to enable easier container development for
-computational reproducibility. At its core a user can run a command
-`docker_run()` which will launch the `rocker/rstudio` stack into a
-docker container, port local config and environment settings into the
-container and activate the active Rstudio project. Wrappers for the
-basic docker commands allow for ease of starting and stopping the
-container.
+A set of functions that I found handy during development of the
+repliCATS pipeline. The goal of ContainR is to enable easier container
+development for computational reproducibility. It is currently a work in
+progess and welcome any issues and comments.
+
+At its core a user can run a command `docker_run()` which will launch
+the `rocker/rstudio:latest` stack into a Docker container, port **local
+config** and **environment** settings into the container and activate
+the Rstudio project. Wrappers for the basic Docker commands allow for
+ease of starting and stopping the container.
 
 Included images of the
 [rocker-versioned](https://github.com/rocker-org/rocker-versioned2)
@@ -37,63 +40,62 @@ You can install the development version of `ContainR` from
 devtools::install_github("psychtek/ContainR")
 ```
 
-## Note
+### Docker Check
 
-The default design of this package allows the user to launch one of the
-rocker images, and activate the users current working Rstudio project
-directory. Local R packages are not copied but allow the user to explore
-a fresh container image.
+Check if Docker is installed on the system or installed for
+[OSX](https://docs.docker.com/desktop/install/mac-install/),
+[Windows](https://docs.docker.com/desktop/install/windows-install/) or
+[Linux](https://docs.docker.com/engine/install/).
 
-The `docker_create()` function is an attempt to make it easier to create
-a `Dockerfile` by allowing the user to:
+``` r
+docker_check()
+```
+
+## Create a Dockerfile
+
+The benefit of this package was to allow a researcher ease of developing
+a container without deep dive learning about Docker commands. The
+`docker_file()` function is an attempt to make it easier to create a
+`Dockerfile` by allowing the user to:
 
 1)  choose the rocker base image,
 
-2)  choose to install either the local `loaded` or `installed` packages,
+2)  choose to install either the local `loaded`, `installed` or `none`
+    packages,
 
 3)  choose to included python.
 
 ``` r
-docker_create(dockerfile = "inst/dockerfiles/Dockerfile", 
-    which_pkgs = "loaded", 
-    rocker_name = "verse",
-    include_python = TRUE) 
+docker_file(dockerfile = "inst/dockerfiles/Dockerfile",
+                   which_pkgs = "none",
+                   name = "rstudio",
+                   tag = "latest",
+                   include_python = TRUE)
 ```
 
 The benefit of this functionality gives the user the choice to build a
 container image and only include packages that are loaded at the time of
 development. The install scripts also skip any packages already
-installed.
+installed on the base Rocker image.
 
 The `docker_build()` function will then read the newly created
 `Dockerfile` and build the image based on the previous user
 requirements.
 
 ``` r
-
-docker_build(dockerfile = "inst/dockerfiles/Dockerfile", 
-                name = "username/custom_image")
+docker_build(dockerfile =  "inst/dockerfiles/Dockerfile", name = "projectname")
 ```
 
-Finally, `docker_run()` is then run with the user supplied Docker image
-to launch a Rstudio container in the browser activating the current
-working project.
+Finally,`docker_run()` is can then be used (with the user supplied
+Docker image) to launch a Rstudio container in the browser activating
+the current working project.
 
 ``` r
-docker_run()
+rocker_run()
 ```
-
-The created `Dockerfile` found in the `inst/dockerfiles/` directory
-provides a form of metadata for environmental computational
-reproducibility and, can easily be relaunch with the `docker_run()`
-command. Although the users local `.config` and `.Renviron` settings are
-copied when the container is launched, this arent included in the actual
-docker image. This allows teams to work on the scripts, update the
-library packages as needed but keep their custom working Rstudio
-configuration settings private.
 
 There are similar packages available such as
 [dockr](https://github.com/smaakage85/dockr) or
 [devindocker](https://github.com/ThinkR-open/devindocker) which provide
 various levels of functionality. We also recommend checking these out to
-see if these suit your requirements.
+see if these address your requirements.
