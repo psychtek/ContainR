@@ -1,9 +1,10 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# ContainR
+# ContainR *Work in progress*
 
-**Work in progress** <!-- badges: start --> <!-- badges: end -->
+<!-- badges: start -->
+<!-- badges: end -->
 
 A set of functions that I found handy during development of the
 repliCATS pipeline. The goal of ContainR is to enable easier container
@@ -50,6 +51,33 @@ Check if Docker is installed on the system or installed for
 ``` r
 docker_check()
 ```
+
+## ContainR Addin
+
+ContainR installs two basic functions into the `Addins` menu,
+`Run Project in Rocker(Rstudio)` and `Stop rocker` which will launch the
+`rocker/rsudio:latest` container and copy your config settings and
+active rstudio project. This doesnt install any packages but is isolated
+from your local R library. Its a quick way to explore the Rocker image
+and test your script and then build a container based around your
+workflow.
+
+## Workflow
+
+- Install `ContainR`
+- Open your Rstudio project
+- Load your scripts as usual
+- Explore which base Rocker image to use
+- Create a Dockerfile with `loaded` packages argument
+- Build a container
+- Run the new Docker file (Launches browser)
+
+## Benefits
+
+\_ The user now has a container and a form of meta data for
+distribution. \_ Container environment is replicated. \_ Choose to
+included data assets or separate functions from data. \_ Collaboration
+with others.
 
 ## Create a Dockerfile
 
