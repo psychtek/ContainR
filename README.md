@@ -4,6 +4,8 @@
 # ContainR <img src="inst/figures/ContainR.png" align="right" width="120" />
 
 <!-- badges: start -->
+
+[![R-CMD-check](https://github.com/psychtek/ContainR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/psychtek/ContainR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 A set of functions that I found handy during development of the

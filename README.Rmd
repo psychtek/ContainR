@@ -16,6 +16,7 @@ knitr::opts_chunk$set(
 # ContainR <img src="inst/figures/ContainR.png" align="right" width="120" />
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/psychtek/ContainR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/psychtek/ContainR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 A set of functions that I found handy during development of the repliCATS pipeline. The goal of ContainR is to enable easier container development for computational reproducibility. The package ports the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) stacks and basic [Docker](https://docs.docker.com/reference/) commands to R. 
