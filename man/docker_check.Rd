@@ -8,5 +8,5 @@ docker_check()
 }
 \description{
 Performs a quick system check for installation
-of docker and if not found gives URL to page for install instructions.
+of Docker and if not found, gives URL to page for install instructions.
 }

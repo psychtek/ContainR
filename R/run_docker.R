@@ -1,7 +1,7 @@
 #' Check Docker Services
 #'
 #' Performs a quick system check for installation
-#' of docker and if not found gives URL to page for install instructions.
+#' of Docker and if not found, gives URL to page for install instructions.
 #'
 #'
 #' @export
@@ -50,12 +50,14 @@ rocker_stop <- function(){
 
 #' Docker build
 #'
-#' Builds a docker image from a file location
+#' Builds a docker container from a `Dockerfile`. The function will look in the `inst/dockerfile/` directory
+#' for an existing Dockerfile.
 #'
-#' @param dockerfile Character path to supplied Dockerfile. Save to `inst/dockerfiles`
+#' @param dockerfile Character path to supplied Dockerfile. Save to `inst/dockerfiles` or
 #' if one doesnt exists then a Dockerfile can be generated from the `docker_file()` function.
 #'
-#' @param name Name and or name and tag of container name such as username/image_name
+#' @param name Name and or name and tag of container name such as your Dockerhub username: `username/image_name`. If no name
+#' is supplied then it will use the active Rstudio project name.
 #'
 #' @export
 docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL){
@@ -68,20 +70,31 @@ docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL
   }
 
   if(is.null(name)) {
-    name <- "containr"
+    name <- tolower(basename(rstudioapi::getActiveProject()))
   } else {
     name <- tolower(name)
   }
 
-
-
   build_command <- paste0("docker build --no-cache=true -t ", name ," -f ", dockerfile, " .")
-  cli::cli_alert_info("Building {.path {dockerfile}} as {.emph {name}}")
+  cli::cli_alert_info("Building {.path {dockerfile}} as {.emph {name}}...")
   system(build_command)
+
+  # executed_cmd <- processx::run(command = "docker",
+  #                               args = c("build",
+  #                                        "--no-cache=true",
+  #                                        "-t",
+  #                                        name,
+  #                                        "-f",
+  #                                        dockerfile,
+  #                                        "."),
+  #                               echo_cmd = TRUE,
+  #                               echo = TRUE,
+  #                               spinner = TRUE)
+
+  docker_images()
 
   cli::cli_alert_success("Success!")
 
-  system("docker image list")
 
 }
 
@@ -233,10 +246,11 @@ docker_list <- function(){
 
 #' Rocker run
 #'
-#' Launches current active R project into a rocker container
-#' and opens a browser.
+#' Launch the active R project into a Rocker Rstudio container
+#' and opens a browser to the session. Mounts local config and .Renviron from local
+#' session.
 #'
-#' @param image Name of rocker image from [data_rocker_table]. Defaults to
+#' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
 #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
 #' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
 #' this argument with the string of the *name* of the build. Built container images can be
@@ -257,7 +271,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
   if(is.null(tag)){
     tag <- "latest"
   } else {
-    tag <- tag
+    tag <- tolower(tag)
   }
 
 
@@ -279,7 +293,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
   cli::cli_h1("Launching Container {.path {docker_image}}")
 
   # Setup names and projec paths
-  project_name <-  basename(rstudioapi::getActiveProject())
+  project_name <- basename(rstudioapi::getActiveProject())
   cli::cli_alert_info("Setting Project to: {.path {project_name}}")
 
   # get working directory from local and set to repo directory
@@ -320,7 +334,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 
   system(exec_sys_cmd)
 
-  cli::cli_alert_info("Launching {.path {project_name}} in you browser...")
+  cli::cli_alert_info("Launching {.path {docker_image}} in you browser...")
   utils::browseURL("http://localhost:8787")
 
 }
@@ -328,20 +342,21 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #' Create a Dockerfile
 #'
 #' This function creates a dockerfile based off the rocker version image stacks and reads
-#' from session information to included `loaded `, `installed` \(or `none`\) R libraries. the `install2.r` handles
-#' additional package installs and will skip already installed packages on the rocker stack image.
+#' from session information to install `loaded `, `installed` \(or `none`\) R libraries. The `install2.r` handles
+#' additional package installs and will skip already installed packages on the rocker stack image. The final `Dockerfile`
+#' can be used to build a container image with your development environment.
 #'
 #' @param dockerfile Default location is in the `inst/dockerfiles/` folder. Build will save the final `Dockerfile`
 #' to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-#' an active project into a Rstudio container from on of the Rocker images: \url{https://rocker-project.org/images/}
+#' an active project into a Rstudio container from one of the Rocker images: \url{https://rocker-project.org/images/}.
 #'
-#' @param which_pkgs Provide a string of either `loaded` or `installed`. `Loaded` will included packages that are currently
+#' @param which_pkgs Provide a string of either `loaded`, `installed` or `none`. `Loaded` will included packages that are currently
 #' loaded in your active project session. The `installed` string will included everything inside you local default R library. Already
-#' installed packages are skipped when the  [docker_build] command is run. If you have a large package library it is
-#' recommended to only install `loaded` as you deveop you workflow.
+#' installed packages are skipped when the [docker_build] command is run. If you have a large package library it is
+#' recommended to only install `loaded` as you develop your workflow.
 #'
 #' @param name The Rocker name of the stack that you want to build. To see the current stack options
-#' load the [data_rocker_table].
+#' load the [data_rocker_table]. For more detailed information visit \url{https://github.com/rocker-org/rocker-versioned2}.
 #'
 #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
 #'
@@ -366,6 +381,8 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
     cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
                            class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
+  } else {
+    cli::cli_alert_info("No Dockerfile found. Creating new {.path inst/dockerfiles/Dockerfile}")
   }
 
   # which_pckgs argument check
@@ -386,14 +403,14 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   if(is.null(tag)){
     tag <- "latest"
   } else {
-    tag <- tag
+    tag <- tolower(tag)
   }
 
   # Flag for python inclusion
   if(isTRUE(include_python)) {
-    cli::cli_alert_info("Python Included: {.val {include_python}}")
+    cli::cli_alert_info("Install Python: {.val {include_python}}")
   } else if(isFALSE(include_python)) {
-    cli::cli_alert_info("Python Included: {.val {include_python}}")
+    cli::cli_alert_info("Install Python: {.val {include_python}}")
   }
 
   rocker_image <- switch(name,
@@ -453,9 +470,9 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 
 }
 
-#' Docker push images
+#' Docker Push Image
 #'
-#' Push and image to docker hub
+#' Push container image to \url{https://hub.docker.com/}.
 #'
 #' @param name The user/name of the docker image
 #' @param tag Version or tag of image. Defaults to latest.

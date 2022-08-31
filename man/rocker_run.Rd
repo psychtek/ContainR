@@ -9,7 +9,7 @@ rocker_run(image = "rstudio", tag = NULL)
 rocker_run(image = "rstudio", tag = NULL)
 }
 \arguments{
-\item{image}{Name of rocker image from \link{data_rocker_table}. Defaults to
+\item{image}{Repository Name of rocker image from \link{data_rocker_table}. Defaults to
 the \code{rstudio} stack \code{rocker/rstudio:latest}. For more information about each stack
 visit \url{https://rocker-project.org/images/}. If you ran \code{docker_build()} then supply
 this argument with the string of the \emph{name} of the build. Built container images can be
@@ -20,7 +20,8 @@ view by running the \code{docker_list()} function.}
 \description{
 RStudio addin for Rocker containers
 
-Launches current active R project into a rocker container
-and opens a browser.
+Launch the active R project into a Rocker Rstudio container
+and opens a browser to the session. Mounts local config and .Renviron from local
+session.
 }
 \keyword{internal}

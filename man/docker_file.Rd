@@ -15,15 +15,15 @@ docker_file(
 \arguments{
 \item{dockerfile}{Default location is in the \verb{inst/dockerfiles/} folder. Build will save the final \code{Dockerfile}
 to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-an active project into a Rstudio container from on of the Rocker images: \url{https://rocker-project.org/images/}}
+an active project into a Rstudio container from one of the Rocker images: \url{https://rocker-project.org/images/}.}
 
-\item{which_pkgs}{Provide a string of either \code{loaded} or \code{installed}. \code{Loaded} will included packages that are currently
+\item{which_pkgs}{Provide a string of either \code{loaded}, \code{installed} or \code{none}. \code{Loaded} will included packages that are currently
 loaded in your active project session. The \code{installed} string will included everything inside you local default R library. Already
-installed packages are skipped when the  \link{docker_build} command is run. If you have a large package library it is
-recommended to only install \code{loaded} as you deveop you workflow.}
+installed packages are skipped when the \link{docker_build} command is run. If you have a large package library it is
+recommended to only install \code{loaded} as you develop your workflow.}
 
 \item{name}{The Rocker name of the stack that you want to build. To see the current stack options
-load the \link{data_rocker_table}.}
+load the \link{data_rocker_table}. For more detailed information visit \url{https://github.com/rocker-org/rocker-versioned2}.}
 
 \item{tag}{A character string of the require version. If no tag is supplied then the function will default to \code{latest}.}
 
@@ -32,6 +32,7 @@ will see this streamlined. \code{Pandas} and \code{numpy} modules are also insta
 }
 \description{
 This function creates a dockerfile based off the rocker version image stacks and reads
-from session information to included \code{loaded }, \code{installed} \(or \code{none}\) R libraries. the \code{install2.r} handles
-additional package installs and will skip already installed packages on the rocker stack image.
+from session information to install \code{loaded }, \code{installed} \(or \code{none}\) R libraries. The \code{install2.r} handles
+additional package installs and will skip already installed packages on the rocker stack image. The final \code{Dockerfile}
+can be used to build a container image with your development environment.
 }

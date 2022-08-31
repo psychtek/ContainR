@@ -2,7 +2,7 @@
 % Please edit documentation in R/run_docker.R
 \name{docker_push}
 \alias{docker_push}
-\title{Docker push images}
+\title{Docker Push Image}
 \usage{
 docker_push(name, tag)
 }
@@ -12,5 +12,5 @@ docker_push(name, tag)
 \item{tag}{Version or tag of image. Defaults to latest.}
 }
 \description{
-Push and image to docker hub
+Push container image to \url{https://hub.docker.com/}.
 }
