@@ -1,5 +1,16 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# ContainR 0.1.3
+
+- Documentation updates
+- Update `README`
+- working hex sticker
+- More readme tweaks
+- Updated Readme
+- Documentation updates
+- Hacky installed of any packages that are needed to be installed from Github that are not on CRAN.
+
+
 # ContainR 0.1.2
 
 - Hacky installed of any packages that are needed to be installed from Github that are not on CRAN.
