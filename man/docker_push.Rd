@@ -4,7 +4,7 @@
 \alias{docker_push}
 \title{Docker Push Image}
 \usage{
-docker_push(name, tag)
+docker_push(name = NULL, tag = NULL)
 }
 \arguments{
 \item{name}{The user/name of the docker image}

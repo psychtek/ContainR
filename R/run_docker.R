@@ -478,22 +478,18 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 #' @param tag Version or tag of image. Defaults to latest.
 #'
 #' @export
-docker_push <- function(name, tag){
+docker_push <- function(name = NULL, tag = NULL){
 
   cli::cli_h1("Docker Push Image")
   #docker_login()
 
   sys_cmd <- paste0("docker push ", name, ":", tag)
 
-  cli::cli_alert_info("I know. You were expecting this function to work.
-                      Im sorry to dissapoint {.emph buuuut} we are working on it!!",
+  cli::cli_alert_info("We are working on adding this function but...\n",
                          class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
+  cli::cli_alert("Have you ever heard the tragedy of Darth Plagueis, the wise?")
 
-  # cli::cli_alert_warning("{.emph {sys_cmd}}",
-  #                        class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
-  #
-  # print(sys_cmd)
 
 }
 
