@@ -1,5 +1,12 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# ContainR 0.1.4
+
+- Minor edits
+- `README` edits.
+- Add github action to check standard
+
+
 # ContainR 0.1.3
 
 - Documentation updates
