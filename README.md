@@ -6,16 +6,22 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/psychtek/ContainR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/psychtek/ContainR/actions/workflows/R-CMD-check.yaml)
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-A set of functions that I found handy during development of the
-repliCATS pipeline. The goal of ContainR is to enable easier container
-development for computational reproducibility. The package ports the
+A set of functions that I found handy during the development of the
+[repliCATS pipeline](https://replicats.research.unimelb.edu.au/) that
+ive ported into this package. The goal of **ContainR** is to enable
+easier container development for computational reproducibility. The
+package ports the
 [rocker-versioned](https://github.com/rocker-org/rocker-versioned2)
 stacks and basic [Docker](https://docs.docker.com/reference/) commands
 to R.
 
-It is currently a work in progess and welcome any issues and comments.
+It is currently a work in progress and welcome any issues and comments.
+
+[Read more about the Rocker Project](https://rocker-project.org/)
 
 ## Overview
 
@@ -62,7 +68,7 @@ for [OSX](https://docs.docker.com/desktop/install/mac-install/),
 docker_check()
 ```
 
-## ContainR Addin
+### ContainR Addin
 
 ContainR installs two basic functions into the `Addins` menu,
 `Run Project in Rocker(Rstudio)` and `Stop rocker` which will launch the
@@ -73,13 +79,14 @@ stack and build a container based around your workflow.
 
 ## Workflow
 
-- Install `ContainR`.
-- Open your current Rstudio project.
-- Explore which base Rocker image to use `ContainR::data_rocker_table`
-- Create a Dockerfile `docker_file()` **Future plan is to allow a choice
-  to also direct copy the R project into the image**
-- Build a container `docker_build()`
-- Run the new Docker file (Launches browser) `docker_run()`
+- Install **ContainR** package
+  `devtools::install_github("psychtek/ContainR")`.
+- Open your current working Rstudio project.
+- Explore which base [Rocker image](https://rocker-project.org/) to use
+  `ContainR::data_rocker_table`.
+- Create a Dockerfile `docker_file()`.
+- Build a container `docker_build()`.
+- Run the new Docker file (Launches browser) `docker_run()`.
 
 ## Usage
 
@@ -138,21 +145,20 @@ rocker_run(image = "psychtek/imagename", tag = "latest")
 
 When a container is launched **none of your local Rstudio settings are
 preserved** in the built image. Only the R packages and Rocker stack
-that was chosen during the build are preserved. This allows the user the
-choice to explore out a Rocker image or build into the image R packages
+that were chosen during the *build* are preserved. This allows the user
+the choice to explore a Rocker image or build into the image R packages
 used with the current active Rstudio project. **Future plans is to allow
 the user to copy the working directory into the container image**.
+Separating this allows for the separation of environment and package
+development choices.
 
 The Docker image can also be pushed to
 [Dockerhub](https://hub.docker.com/) and shared with others for
 collaboration on a project so that the team is using the same
 environment for development.
 
-If you have a Rmarkdown or [Quarto](https://quarto.org/) analysis you
-can provide a `docker-compose` file to reference your Docker image and
-link Zenodo DOIs etc.
-
-Ease of exploring Docker containers within Rstudio.
+Ease of exploring a package within Rstudio using ephemeral or persistent
+containers.
 
 ------------------------------------------------------------------------
 
