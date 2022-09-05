@@ -24,7 +24,8 @@ Imports:
     crayon,
     sys,
     purrr, 
-    stringr
+    stringr, 
+    processx
 Depends: 
     R (>= 3.5.0)
 LazyData: true

@@ -13,7 +13,7 @@ rocker_run(image = "rstudio", tag = NULL)
 the \code{rstudio} stack \code{rocker/rstudio:latest}. For more information about each stack
 visit \url{https://rocker-project.org/images/}. If you ran \code{docker_build()} then supply
 this argument with the string of the \emph{name} of the build. Built container images can be
-view by running the \code{docker_list()} function.}
+view by running the \code{docker_images()} function.}
 
 \item{tag}{Version number of stack. Defaults to the \verb{:latest} tag if none is supplied.}
 }

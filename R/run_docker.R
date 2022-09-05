@@ -24,9 +24,13 @@ docker_check <- function(){
     }
 
   } else {
-    dock_vers <- sys::exec_internal('docker', '-v')
-    dock_vers_char <- rawToChar(dock_vers$stdout)
-    if (grepl('Docker version', dock_vers_char)) cli::cli_alert_success(dock_vers_char)
+    sys_cmd <- processx::run(command = "docker",
+                                  args = c("-v"),
+                                  echo_cmd = FALSE,
+                                  echo = FALSE,
+                                  spinner = TRUE)
+
+    cli::cli_alert_success('{gsub("[\r\n]", "", sys_cmd$stdout)}')
 
   }
 
@@ -39,13 +43,16 @@ rocker_stop <- function(){
 
   project_name <- basename(rstudioapi::getActiveProject())
 
-  cli::cli_h1("Stopping {.path {project_name}} container")
+  cli::cli_h1("Stopping {.val {project_name}} container")
 
-  cmd_execute <- paste0("docker stop ", project_name)
+  cmd_stop <- processx::run(command = "docker",
+                            args = c("stop",
+                                     project_name),
+                            echo_cmd = FALSE,
+                            echo = FALSE,
+                            spinner = TRUE)
 
-  system(cmd_execute)
-
-  cli::cli_alert_success("Done")
+  cli::cli_alert_success('{.path {gsub("[\r\n]", "", cmd_stop$stdout)}} Successfully stopped.')
 }
 
 #' Docker build
@@ -111,6 +118,8 @@ docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL
 docker_search <- function(search_string = "rstudio"){
 
   search_command <- paste0('docker search --format "table {{.Name}}\t{{.Description}}\t{{.StarCount}}" ', search_string)
+  cli::cli_alert_info("Searching Dockerhub for {.val {search_string}}")
+
   returned_results <- system(search_command, intern = TRUE)
 
   search_results <- dplyr::tibble(returned_results)
@@ -167,6 +176,11 @@ docker_login <- function(username){
                      " | docker login -u ",
                      USER,
                      " --password-stdin")
+  #
+  # p <- processx::process$new(
+  #   "docker",
+  #   c("login", "-u", "gaborcsardi", "--password-stdin"),
+  #   stdin = "|", stdout = "|", stderr = "|")
 
   system(exec_cmd, intern = TRUE)
 
@@ -231,12 +245,12 @@ docker_images <- function(){
   sys_to_console(sys_cmd)
 }
 
-#' List Docker Images
+#' View Running Containers
 #'
-#' A basic system wrapper for equiv terminal command
+#' View current running containers.
 #'
 #' @export
-docker_list <- function(){
+docker_containers <- function(){
 
   cli::cli_h1("Container Images")
   sys_cmd <- sys::exec_internal("docker", c("container",  "ls", "-a"))
@@ -254,7 +268,7 @@ docker_list <- function(){
 #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
 #' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
 #' this argument with the string of the *name* of the build. Built container images can be
-#' view by running the `docker_list()` function.
+#' view by running the `docker_images()` function.
 #'
 #' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
 #'
@@ -336,6 +350,21 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 
   cli::cli_alert_info("Launching {.path {docker_image}} in you browser...")
   utils::browseURL("http://localhost:8787")
+
+  #
+  # processx::process$new(command = "docker",
+  #                       args = c(
+  #                         "run", "-d", "--rm", "-ti",
+  #                         "-e", "DISABLE_AUTH=TRUE",
+  #                         "-p", "127.0.0.1:8787:8787",
+  #                         "-v", paste(trimws(rstudio_prefs),  ":/home/rstudio/.config/rstudio", sep=""),
+  #                         "-v", paste(trimws(local_r_env),  ":/home/rstudio/.Renviron", sep=""),
+  #                         "--name", paste(trimws(tolower(project_name))),
+  #                         docker_image),
+  #                       stdout = "|",
+  #                       "stderr" = "|",
+  #                       echo_cmd = TRUE,
+  #                       cleanup = FALSE)
 
 }
 
