@@ -1,9 +1,9 @@
-Name: 🎉 Run Project in Rocker(Rstudio)
-Description: Run active project in a rstudio rocker container.
+Name: 🎉 Run in Rocker(Rstudio)
+Description: Run active project in a rstudio Rocker container.
 Binding: rocker_run
 Interactive: false
 
-Name: 🎉 Stop rocker
+Name: 🎉 Stop Rocker
 Description: Stop container
 Binding: rocker_stop
 Interactive: false

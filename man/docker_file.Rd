@@ -7,7 +7,7 @@
 docker_file(
   dockerfile = "inst/dockerfiles/Dockerfile",
   which_pkgs = c("loaded", "installed", "none"),
-  name = c("rstudio", "tidyerse", "verse", "geospatial", "binder"),
+  name = c("rstudio", "tidyverse", "verse", "geospatial", "binder"),
   tag = NULL,
   include_python = FALSE
 )

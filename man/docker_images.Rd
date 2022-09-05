@@ -2,10 +2,10 @@
 % Please edit documentation in R/run_docker.R
 \name{docker_images}
 \alias{docker_images}
-\title{List Docker Images}
+\title{View Docker Images}
 \usage{
 docker_images()
 }
 \description{
-A basic system wrapper for equiv terminal command
+A basic system wrapper for equiv terminal command to view the Docker register
 }

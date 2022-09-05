@@ -233,9 +233,9 @@ rocker_pull <- function(name, tag = NULL){
 }
 
 
-#' List Docker Images
+#' View Docker Images
 #'
-#' A basic system wrapper for equiv terminal command
+#' A basic system wrapper for equiv terminal command to view the Docker register
 #'
 #' @export
 docker_images <- function(){
@@ -396,7 +396,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #' @export
 docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
                           which_pkgs = c("loaded", "installed", "none"),
-                          name = c("rstudio", "tidyerse", "verse", "geospatial", "binder"),
+                          name = c("rstudio", "tidyverse", "verse", "geospatial", "binder"),
                           tag = NULL,
                           include_python = FALSE){
 
@@ -417,7 +417,7 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   # which_pckgs argument check
   if(!(which_pkgs %in% c("loaded", "installed", "none"))) {
 
-    cli::cli_alert_warning("{.emph which_pkgs} must be of type {.emph loaded} or {.emph installed} or {.emph none}",
+    cli::cli_abort("{.emph which_pkgs} must be of type {.val loaded}, {.val installed} or {.val none}",
                            class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
     }
@@ -444,7 +444,7 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 
   rocker_image <- switch(name,
                          rstudio = paste0("rocker/rstudio:", tag),
-                         tidyerse = paste0("rocker/tidyverse:", tag),
+                         tidyverse = paste0("rocker/tidyverse:", tag),
                          verse = paste0("rocker/verse:", tag),
                          geospatial = paste0("rocker/geospatial:", tag),
                          binder = paste0("rocker/binder:", tag))
@@ -454,7 +454,7 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   packages <- sessioninfo::package_info(pkgs = which_pkgs)
 
   if(which_pkgs != "none") {
-    write_install_bash_file(x = packages)
+    write_install_bash_file(packages)
   }
 
   # command layout for dockerfile
@@ -550,7 +550,7 @@ write_install_bash_file <- function(x){
     dplyr::filter(Source == stringr::str_match_all(Source,
                                                    pattern = "CRAN \\(R \\d.\\d.\\d\\)"))
 
-  cli::cli_alert_info("{.path {nrow(CRAN_packs)}} lib{?s} from {.var {which_pkgs}}")
+  cli::cli_alert_info("{.path {nrow(CRAN_packs)}} lib{?s}")
   cli::cli_alert_info("Including: {.val {CRAN_packs$Package}}")
 
   cran_packs_first <- paste0("\t", CRAN_packs$Package[0 -length(CRAN_packs$Package)], " \\")
@@ -570,8 +570,11 @@ write_install_bash_file <- function(x){
     dplyr::select(Source) |>
     purrr::pluck("Source")
 
-  cli::cli_alert_info("Including {.path {nrow(GITHUB_packs)}} GitHub Package{?s}")
-  cli::cli_alert_info("Including: {.val {GITHUB_packs$Package}}")
+
+  if(nrow(GITHUB_packs) > 0){
+    cli::cli_alert_info("Including {.path {nrow(GITHUB_packs)}} GitHub Package{?s}")
+    cli::cli_alert_info("{.val {GITHUB_packs$Package}}")
+  }
 
   bash_file = "inst/dockerfiles/rocker_scripts/install_libs_local.sh"
 
