@@ -1,5 +1,14 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# ContainR 0.1.4.9000
+
+- `README` re-writes and updates.
+- Updates to functions and addins.
+- Fix for `which_pkgs` error.
+- Changed `docker_list` to `docker_containers`.
+- Updates to `README`.
+
+
 # ContainR 0.1.4
 
 - Minor edits
