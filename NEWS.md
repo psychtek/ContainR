@@ -1,5 +1,15 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# ContainR 0.1.5
+
+- fix extra fun argument.
+- set_local flag to display correct info.
+- Switched to `fs` package for file and dir creation.
+- added flags to `rocker_run()` for disabling Rstudio authentication and if to clone local config settings.
+- Removed old comments.
+- Moved bash files to `extdata`.
+
+
 # ContainR 0.1.4.9000
 
 - `README` re-writes and updates.
