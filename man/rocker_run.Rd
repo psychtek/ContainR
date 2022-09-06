@@ -4,9 +4,19 @@
 \alias{rocker_run}
 \title{RStudio Addin: Run active project in Rocker Rstudio docker container}
 \usage{
-rocker_run(image = "rstudio", tag = NULL)
+rocker_run(
+  image = "rstudio",
+  tag = NULL,
+  DISABLE_AUTH = TRUE,
+  set_local = TRUE
+)
 
-rocker_run(image = "rstudio", tag = NULL)
+rocker_run(
+  image = "rstudio",
+  tag = NULL,
+  DISABLE_AUTH = TRUE,
+  set_local = TRUE
+)
 }
 \arguments{
 \item{image}{Repository Name of rocker image from \link{data_rocker_table}. Defaults to
@@ -16,12 +26,18 @@ this argument with the string of the \emph{name} of the build. Built container i
 view by running the \code{docker_images()} function.}
 
 \item{tag}{Version number of stack. Defaults to the \verb{:latest} tag if none is supplied.}
+
+\item{DISABLE_AUTH}{Bypass authentication and show the R session. Defaults to TRUE and will
+login when the session is launced in a browser.}
+
+\item{set_local}{Whether to clone the local \code{.config}, \code{.Renviron} and \code{.Rprofile} to container session or
+use the default settings. Defaults to \code{TRUE} and makes these config files available. Handy if the user has a
+particular panel and theme layout and want to access private repos for install and testing.}
 }
 \description{
 RStudio addin for Rocker containers
 
 Launch the active R project into a Rocker Rstudio container
-and opens a browser to the session. Mounts local config and .Renviron from local
-session.
+and opens a browser to the session.
 }
 \keyword{internal}

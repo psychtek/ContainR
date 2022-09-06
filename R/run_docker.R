@@ -36,7 +36,7 @@ docker_check <- function(){
 
 }
 
-#' Stop docker session
+#' Stop Rocker Container
 #'
 #' @export
 rocker_stop <- function(){
@@ -60,18 +60,18 @@ rocker_stop <- function(){
 #' Builds a docker container from a `Dockerfile`. The function will look in the `inst/dockerfile/` directory
 #' for an existing Dockerfile.
 #'
-#' @param dockerfile Character path to supplied Dockerfile. Save to `inst/dockerfiles` or
+#' @param dockerfile Character path to supplied Dockerfile. Save to `docker/` or
 #' if one doesnt exists then a Dockerfile can be generated from the `docker_file()` function.
 #'
 #' @param name Name and or name and tag of container name such as your Dockerhub username: `username/image_name`. If no name
-#' is supplied then it will use the active Rstudio project name.
+#' is supplied then it will use the active Rstudio project name `rstudioapi::getActiveProject()`.
 #'
 #' @export
-docker_build <- function(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL){
+docker_build <- function(dockerfile = "docker/Dockerfile", name = NULL){
 
   docker_check()
 
-  if(isFALSE(file.exists(dockerfile = "inst/dockerfiles/Dockerfile"))){
+  if(isFALSE(fs::file_exists(dockerfile = "docker/Dockerfile"))){
     cli::cli_abort("No Dockerfile could be found. Please check your path or run:
                   {.fun ContainR::docker_file}")
   }
@@ -153,7 +153,8 @@ docker_search <- function(search_string = "rstudio"){
 docker_login <- function(username){
 
   cli::cli_h1("Docker Login")
-
+  #TODO this needs to be update for secure login
+  # also to return state to check if already logged in processx::new
   url_helper = "https://hub.docker.com/settings/general"
 
   # Set username
@@ -261,8 +262,7 @@ docker_containers <- function(){
 #' Rocker run
 #'
 #' Launch the active R project into a Rocker Rstudio container
-#' and opens a browser to the session. Mounts local config and .Renviron from local
-#' session.
+#' and opens a browser to the session.
 #'
 #' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
 #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
@@ -272,8 +272,15 @@ docker_containers <- function(){
 #'
 #' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
 #'
+#' @param DISABLE_AUTH Bypass authentication and show the R session. Defaults to TRUE and will
+#' login when the session is launced in a browser.
+#'
+#' @param set_local Whether to clone the local `.config`, `.Renviron` and `.Rprofile` to container session or
+#' use the default settings. Defaults to `TRUE` and makes these config files available. Handy if the user has a
+#' particular panel and theme layout and want to access private repos for install and testing.
+#'
 #' @export
-rocker_run <- function(image = "rstudio", tag = NULL){
+rocker_run <- function(image = "rstudio", tag = NULL, DISABLE_AUTH = TRUE, set_local = TRUE){
 
   cli::cli_alert_info("Checking Docker Install...")
   docker_check()
@@ -307,19 +314,19 @@ rocker_run <- function(image = "rstudio", tag = NULL){
   cli::cli_h1("Launching Container {.path {docker_image}}")
 
   # Setup names and projec paths
-  project_name <- basename(rstudioapi::getActiveProject())
+  project_name <- tolower(basename(rstudioapi::getActiveProject()))
   cli::cli_alert_info("Setting Project to: {.path {project_name}}")
 
   # get working directory from local and set to repo directory
-  project_dir <- getwd()
+  project_dir <- fs::path_wd()
   cli::cli_alert_info("Working Directory Set to: {.path {project_dir}}")
 
   #Copying .Renviron
-  local_r_env <- paste0(Sys.getenv("HOME"), "/.Renviron")
+  local_r_env <- paste0(fs::path_home_r(), "/.Renviron")
   cli::cli_alert_info("Cloning .Renviron : {.path {local_r_env}}")
 
   #Copy preferences stored in /inst/prefs
-  rstudio_prefs <- paste0(Sys.getenv("HOME"), "/.config/rstudio")
+  rstudio_prefs <- paste0(fs::path_home_r(), "/.config/rstudio")
   cli::cli_alert_info("R Settings Cloned from: {.path {rstudio_prefs}}")
 
   # set rprofile inside container to active project
@@ -330,15 +337,16 @@ rocker_run <- function(image = "rstudio", tag = NULL){
   # # Docker launch command
   # --rm remove the container automatically after it exits
   # TODO allow for different run commands
-  AUTH = TRUE
   exec_sys_cmd <- paste0(c(
     paste0("docker run -d --rm -ti"),
-    paste0(" -e DISABLE_AUTH=", ifelse(isTRUE(AUTH), AUTH, "FALSE"), sep = ""),
+    paste0(" -e DISABLE_AUTH=", ifelse(isTRUE(DISABLE_AUTH), DISABLE_AUTH, "FALSE"), sep = ""),
     paste0(" -p 127.0.0.1:8787:8787"),
-    paste0(" -v ", project_dir, ":/home/rstudio/", project_name, sep = ""),
-    paste0(" -v ", rstudio_prefs, ":/home/rstudio/.config/rstudio", sep = ""),
-    paste0(" -v ", local_r_env, ":/home/rstudio/.Renviron", sep = ""),
-    paste0(" -v ", rprof_file, ":/home/rstudio/.Rprofile", sep = ""),
+    paste0(" -v ", project_dir, ":/home/rstudio/", basename(project_dir), sep = ""),
+    if(isTRUE(set_local)) {
+      c(paste0(" -v ", rstudio_prefs, ":/home/rstudio/.config/rstudio", sep = ""),
+        paste0(" -v ", local_r_env, ":/home/rstudio/.Renviron", sep = ""),
+        paste0(" -v ", rprof_file, ":/home/rstudio/.Rprofile", sep = ""))
+    },
     paste0(" --name ", project_name),
     paste0(" ", docker_image)
   ), collapse = "")
@@ -375,9 +383,9 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #' additional package installs and will skip already installed packages on the rocker stack image. The final `Dockerfile`
 #' can be used to build a container image with your development environment.
 #'
-#' @param dockerfile Default location is in the `inst/dockerfiles/` folder. Build will save the final `Dockerfile`
-#' to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-#' an active project into a Rstudio container from one of the Rocker images: \url{https://rocker-project.org/images/}.
+#' @param dockerfile Default location is in the `docker/` folder. Build will save the final `Dockerfile`
+#' to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
+#' an active project into a **Rstudio** container from one of the Rocker images: \url{https://rocker-project.org/images/}.
 #'
 #' @param which_pkgs Provide a string of either `loaded`, `installed` or `none`. `Loaded` will included packages that are currently
 #' loaded in your active project session. The `installed` string will included everything inside you local default R library. Already
@@ -394,7 +402,7 @@ rocker_run <- function(image = "rstudio", tag = NULL){
 #'
 #'
 #' @export
-docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
+docker_file <- function(dockerfile = "docker/Dockerfile",
                           which_pkgs = c("loaded", "installed", "none"),
                           name = c("rstudio", "tidyverse", "verse", "geospatial", "binder"),
                           tag = NULL,
@@ -405,27 +413,25 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   # Check for image name
   data_rocker_table <- ContainR::data_rocker_table
 
-  # File overwrite warning
-  if(file.exists(dockerfile)) {
-    cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
-                           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
-
-  } else {
-    cli::cli_alert_info("No Dockerfile found. Creating new {.path inst/dockerfiles/Dockerfile}")
-  }
-
-  # which_pckgs argument check
+  # which_pkgs argument check
   if(!(which_pkgs %in% c("loaded", "installed", "none"))) {
 
     cli::cli_abort("{.emph which_pkgs} must be of type {.val loaded}, {.val installed} or {.val none}",
-                           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+                   class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
-    }
+  }
 
   # rocker name match check
   if(!(name %in% data_rocker_table$name)){
     cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
+  }
+
+  # Flag for python inclusion
+  if(isTRUE(include_python)) {
+    cli::cli_alert_info("Install Python: {.val {include_python}}")
+  } else if(isFALSE(include_python)) {
+    cli::cli_alert_info("Install Python: {.val {include_python}}")
   }
 
   # Set tag
@@ -435,11 +441,14 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
     tag <- tolower(tag)
   }
 
-  # Flag for python inclusion
-  if(isTRUE(include_python)) {
-    cli::cli_alert_info("Install Python: {.val {include_python}}")
-  } else if(isFALSE(include_python)) {
-    cli::cli_alert_info("Install Python: {.val {include_python}}")
+  # File overwrite warning
+  if(fs::file_exists(dockerfile)) {
+    cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
+                           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+
+  } else {
+    cli::cli_alert_info("Setting up directory and files...")
+    docker_folder_setup()
   }
 
   rocker_image <- switch(name,
@@ -454,7 +463,7 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   packages <- sessioninfo::package_info(pkgs = which_pkgs)
 
   if(which_pkgs != "none") {
-    write_install_bash_file(packages)
+   write_install_bash_file(packages)
   }
 
   # command layout for dockerfile
@@ -464,9 +473,9 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
     paste(""),
     if(isTRUE(include_python)) {
       c(
-        paste("COPY", "/inst/dockerfiles/rocker_scripts/install_python.sh /tmp/"),
+        paste("COPY /docker/scripts/install_python.sh /tmp/"),
         paste(""),
-        paste("COPY", "/inst/dockerfiles/rocker_scripts/install_pyenv.sh /tmp/"),
+        paste("COPY /docker/scripts/install_pyenv.sh /tmp/"),
         paste(""),
         paste("RUN", "chmod +x /tmp/install_python.sh"),
         paste(""),
@@ -476,9 +485,9 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
         paste("")
       )
     },
-    paste("COPY /inst/dockerfiles/rocker_scripts/install_libs_local.sh /tmp/"),
+    paste("COPY /docker/scripts/install_libs_local.sh /tmp/"),
     paste(""),
-    paste("COPY /inst/dockerfiles/rocker_scripts/install_additional.sh /tmp/"),
+    paste("COPY /docker/scripts/install_additional.sh /tmp/"),
     paste(""),
     paste("RUN chmod +x /tmp/install_libs_local.sh"),
     paste(""),
@@ -488,7 +497,7 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
   ),
   collapse = "\n")
 
-  writeLines(docker_cmds, dockerfile, sep = "")
+  writeLines(docker_cmds, con = dockerfile, sep = "")
 
   if(isTRUE(file.exists(dockerfile))){
     cli::cli_alert_success("Dockerfile saved to: {.path {dockerfile}}")
@@ -501,7 +510,11 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 
 #' Docker Push Image
 #'
-#' Push container image to \url{https://hub.docker.com/}.
+#' Push container image to \url{https://hub.docker.com/}. Naming Convention in Docker Hub:
+#' Very popularly known software are given their own name as Docker image. For individuals and
+#' corporates, docker gives a username. And all the images can be pushed to a particular username.
+#' And can be pulled using the image name with a username.
+#'
 #'
 #' @param name The user/name of the docker image
 #' @param tag Version or tag of image. Defaults to latest.
@@ -509,16 +522,22 @@ docker_file <- function(dockerfile = "inst/dockerfiles/Dockerfile",
 #' @export
 docker_push <- function(name = NULL, tag = NULL){
 
-  cli::cli_h1("Docker Push Image")
+  cli::cli_h1("Docker Push {.val {name}}:{.val {tag}}")
   #docker_login()
+
+  if(is.null(tag)){
+    tag <- "latest"
+  } else {
+    tag <- tag
+  }
 
   sys_cmd <- paste0("docker push ", name, ":", tag)
 
-  cli::cli_alert_info("We are working on adding this function but...\n",
+  cli::cli_alert_info("{.emph Have you ever heard the tragedy of Darth Plagueis, the wise?}",
                          class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
 
-  cli::cli_alert("Have you ever heard the tragedy of Darth Plagueis, the wise?")
-
+  system(sys_cmd)
+  cli::cli_alert_success("Done")
 
 }
 
@@ -535,8 +554,15 @@ sys_to_console <- function(x){
 
 }
 
-# Write the install bash file
+# Write the install_libs_local.sh so this can be dynamically
+# updated.
 write_install_bash_file <- function(x){
+
+  bash_file <- "docker/scripts/install_libs_local.sh"
+
+    if(isTRUE(file.exists(bash_file))){
+    cli::cli_alert_info("Updating: {.path {bash_file}}")
+  }
 
   packages <- x
   Source <- NULL
@@ -553,20 +579,28 @@ write_install_bash_file <- function(x){
   cli::cli_alert_info("{.path {nrow(CRAN_packs)}} lib{?s}")
   cli::cli_alert_info("Including: {.val {CRAN_packs$Package}}")
 
+  # trailing slash in bash file so hack fix
   cran_packs_first <- paste0("\t", CRAN_packs$Package[0 -length(CRAN_packs$Package)], " \\")
   cran_packs_last <- paste0("\t", CRAN_packs$Package[length(CRAN_packs$Package) - 0], "")
 
+  # Filter to GIThub repos and remove local installs
   GITHUB_packs <- packs |>
     dplyr::filter(Source != stringr::str_match_all(Source,
                                                    pattern = "CRAN \\(R \\d.\\d.\\d\\)")) |>
-    dplyr::filter(Source != "local") |>
-    dplyr::filter(Source == stringr::str_match_all(Source,
-                                                   pattern = "Github \\(\\w+/\\w+@[0-9A-Za-z]+\\)"))
+    dplyr::filter(Source != "local") # TODO check correct string match
+
 
   github_installs <- GITHUB_packs |>
     dplyr::mutate(Source = stringr::str_extract_all(Source,
-                                                    pattern = "\\w+/\\w+",
+                                                    pattern = "(.*?)@",
                                                     simplify = TRUE)) |>
+    dplyr::mutate(Source = stringr::str_extract_all(Source,
+                                                    pattern = "\\(([\\s\\S]*)$",
+                                                    simplify = TRUE)) |>
+    dplyr::mutate(Source = stringr::str_remove_all(Source,
+                                                   pattern = "\\((.*?)")) |>
+    dplyr::mutate(Source = stringr::str_remove_all(Source,
+                                                   pattern = "@")) |>
     dplyr::select(Source) |>
     purrr::pluck("Source")
 
@@ -575,8 +609,6 @@ write_install_bash_file <- function(x){
     cli::cli_alert_info("Including {.path {nrow(GITHUB_packs)}} GitHub Package{?s}")
     cli::cli_alert_info("{.val {GITHUB_packs$Package}}")
   }
-
-  bash_file = "inst/dockerfiles/rocker_scripts/install_libs_local.sh"
 
   # Command layout for bash script
   installR_script <- paste(c(
@@ -614,11 +646,11 @@ write_install_bash_file <- function(x){
   if(isTRUE(file.exists(bash_file))){
     cli::cli_alert_success("Bash file updated: {.path {bash_file}}")
   }
-
-
+  return(bash_file)
 }
 
-# Config file
+# Config file that will overwrite the Rstudio one
+# and then when session is launch it will activate working dir
 create_config_file <- function(project_name){
 
   rprofile <-  paste0(tempdir(), "/.Rprofile")
@@ -646,4 +678,65 @@ sep = "\n")
 
   return(rprofile)
 
+}
+
+# Setup the docker files and folders
+docker_folder_setup <- function(){
+
+  if(!fs::dir_exists("docker")) {
+    fs::dir_create("docker")
+  } else if(fs::dir_exists("docker")) {
+    cli::cli_alert_success("{.path /docker/}")
+  }
+
+  if(!fs::dir_exists("docker/scripts")) {
+    fs::dir_create("docker/scripts")
+  } else if(fs::dir_exists("docker/scripts")) {
+    cli::cli_alert_success("{.path /docker/scripts}")
+  }
+
+  if(!fs::file_exists("docker/scripts/install_libs_local.sh")) {
+    fs::file_create("docker/scripts/install_libs_local.sh")
+  } else if(fs::file_exists("docker/scripts/install_libs_local.sh")) {
+    cli::cli_alert_success("{.path /docker/scripts/install_libs_local.sh}")
+  }
+
+  if(!fs::file_exists("docker/Dockerfile")) {
+    fs::file_create("docker/Dockerfile")
+  } else if(fs::file_exists("docker/Dockerfile")) {
+    cli::cli_alert_success("{.path /docker/Dockerfile}")
+  }
+
+  if(!fs::file_exists("docker/scripts/install_python.sh")) {
+    get_extdata("install_python.sh")
+  } else if(fs::file_exists("docker/scripts/install_python.sh")) {
+    cli::cli_alert_success("{.path /docker/scripts/install_python.sh}")
+  }
+
+  if(!fs::file_exists("docker/scripts/install_pyenv.sh")) {
+    get_extdata("install_pyenv.sh")
+  } else if(fs::file_exists("docker/scripts/install_pyenv.sh")) {
+    cli::cli_alert_success("{.path /docker/scripts/install_pyenv.sh}")
+  }
+
+  if(!fs::file_exists("docker/scripts/install_additional.sh")) {
+    get_extdata("install_additional.sh")
+  } else if(fs::file_exists("docker/scripts/install_additional.sh")) {
+    cli::cli_alert_success("{.path /docker/scripts/install_additional.sh}")
+  }
+
+  fs::dir_tree("docker")
+
+}
+
+# Grabs the additional rocker scripts in extdata
+get_extdata <- function(file){
+
+  x <- system.file("extdata",
+                   file,
+                   package="ContainR",
+                   mustWork = TRUE)
+  fs::file_copy(x,
+                "docker/scripts",
+                overwrite = TRUE)
 }

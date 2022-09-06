@@ -4,14 +4,14 @@
 \alias{docker_build}
 \title{Docker build}
 \usage{
-docker_build(dockerfile = "inst/dockerfiles/Dockerfile", name = NULL)
+docker_build(dockerfile = "docker/Dockerfile", name = NULL)
 }
 \arguments{
-\item{dockerfile}{Character path to supplied Dockerfile. Save to \code{inst/dockerfiles} or
+\item{dockerfile}{Character path to supplied Dockerfile. Save to \verb{docker/} or
 if one doesnt exists then a Dockerfile can be generated from the \code{docker_file()} function.}
 
 \item{name}{Name and or name and tag of container name such as your Dockerhub username: \code{username/image_name}. If no name
-is supplied then it will use the active Rstudio project name.}
+is supplied then it will use the active Rstudio project name \code{rstudioapi::getActiveProject()}.}
 }
 \description{
 Builds a docker container from a \code{Dockerfile}. The function will look in the \verb{inst/dockerfile/} directory

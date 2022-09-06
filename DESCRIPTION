@@ -25,7 +25,12 @@ Imports:
     sys,
     purrr, 
     stringr, 
-    processx
+    processx,
+    fs
 Depends: 
     R (>= 3.5.0)
 LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

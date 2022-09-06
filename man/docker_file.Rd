@@ -5,7 +5,7 @@
 \title{Create a Dockerfile}
 \usage{
 docker_file(
-  dockerfile = "inst/dockerfiles/Dockerfile",
+  dockerfile = "docker/Dockerfile",
   which_pkgs = c("loaded", "installed", "none"),
   name = c("rstudio", "tidyverse", "verse", "geospatial", "binder"),
   tag = NULL,
@@ -13,9 +13,9 @@ docker_file(
 )
 }
 \arguments{
-\item{dockerfile}{Default location is in the \verb{inst/dockerfiles/} folder. Build will save the final \code{Dockerfile}
-to this location. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-an active project into a Rstudio container from one of the Rocker images: \url{https://rocker-project.org/images/}.}
+\item{dockerfile}{Default location is in the \verb{docker/} folder. Build will save the final \code{Dockerfile}
+to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
+an active project into a \strong{Rstudio} container from one of the Rocker images: \url{https://rocker-project.org/images/}.}
 
 \item{which_pkgs}{Provide a string of either \code{loaded}, \code{installed} or \code{none}. \code{Loaded} will included packages that are currently
 loaded in your active project session. The \code{installed} string will included everything inside you local default R library. Already
