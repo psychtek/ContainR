@@ -53,9 +53,6 @@ apt_install \
 echo -e "Installing Remotes() to install non CRAN Packages...\n"
 # Remotes Installs
 Rscript -e "install.packages(c('remotes'), repos='${CRAN_SOURCE}')"
-# Rscript -e "remotes::install_github('jthomasmock/gtExtras')"
-# Rscript -e "remotes::install_version('pins', version = '0.4.5')"
-# Rscript -e "remotes::install_github('mitchelloharawild/icons')"
 
 echo -e "Installing Additional R Packages...\n"
 # Additional R libraries
