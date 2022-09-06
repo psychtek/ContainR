@@ -71,7 +71,7 @@ docker_build <- function(dockerfile = "docker/Dockerfile", name = NULL){
 
   docker_check()
 
-  if(isFALSE(fs::file_exists(dockerfile = "docker/Dockerfile"))){
+  if(isFALSE(fs::file_exists(dockerfile))){
     cli::cli_abort("No Dockerfile could be found. Please check your path or run:
                   {.fun ContainR::docker_file}")
   }
@@ -321,18 +321,22 @@ rocker_run <- function(image = "rstudio", tag = NULL, DISABLE_AUTH = TRUE, set_l
   project_dir <- fs::path_wd()
   cli::cli_alert_info("Working Directory Set to: {.path {project_dir}}")
 
-  #Copying .Renviron
-  local_r_env <- paste0(fs::path_home_r(), "/.Renviron")
-  cli::cli_alert_info("Cloning .Renviron : {.path {local_r_env}}")
+  if(isTRUE(set_local)) {
 
-  #Copy preferences stored in /inst/prefs
-  rstudio_prefs <- paste0(fs::path_home_r(), "/.config/rstudio")
-  cli::cli_alert_info("R Settings Cloned from: {.path {rstudio_prefs}}")
+    #Copying .Renviron
+    local_r_env <- paste0(fs::path_home_r(), "/.Renviron")
+    cli::cli_alert_info("Cloning .Renviron : {.path {local_r_env}}")
 
-  # set rprofile inside container to active project
-  rprof_file <- create_config_file(project_name = project_name)
-  #rprof_file <- "/Users/awwillc/Repos/replicats/inst/docker/.Rprofile"
-  cli::cli_alert_info("Cloning temp: {.path {rprof_file}}")
+    #Copy preferences stored in /inst/prefs
+    rstudio_prefs <- paste0(fs::path_home_r(), "/.config/rstudio")
+    cli::cli_alert_info("R Settings Cloned from: {.path {rstudio_prefs}}")
+
+    # set rprofile inside container to active project
+    rprof_file <- create_config_file(project_name = project_name)
+    #rprof_file <- "/Users/awwillc/Repos/replicats/inst/docker/.Rprofile"
+    cli::cli_alert_info("Cloning temp: {.path {rprof_file}}")
+
+  }
 
   # # Docker launch command
   # --rm remove the container automatically after it exits
