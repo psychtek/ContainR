@@ -25,34 +25,13 @@ docker_check <- function(){
 
   } else {
     sys_cmd <- processx::run(command = "docker",
-                                  args = c("-v"),
-                                  echo_cmd = FALSE,
-                                  echo = FALSE,
-                                  spinner = TRUE)
+                             args = c("-v"),
+                             error_on_status = FALSE)
 
     cli::cli_alert_success('{gsub("[\r\n]", "", sys_cmd$stdout)}')
 
   }
 
-}
-
-#' Stop Rocker Container
-#'
-#' @export
-rocker_stop <- function(){
-
-  project_name <- basename(rstudioapi::getActiveProject())
-
-  cli::cli_h1("Stopping {.val {project_name}} container")
-
-  cmd_stop <- processx::run(command = "docker",
-                            args = c("stop",
-                                     project_name),
-                            echo_cmd = FALSE,
-                            echo = FALSE,
-                            spinner = TRUE)
-
-  cli::cli_alert_success('{.path {gsub("[\r\n]", "", cmd_stop$stdout)}} Successfully stopped.')
 }
 
 #' Docker build
@@ -117,28 +96,21 @@ docker_build <- function(dockerfile = "docker/Dockerfile", name = NULL){
 #' @export
 docker_search <- function(search_string = "rstudio"){
 
-  search_command <- paste0('docker search --format "table {{.Name}}\t{{.Description}}\t{{.StarCount}}" ', search_string)
-  cli::cli_alert_info("Searching Dockerhub for {.val {search_string}}")
+  columns <- c("Name", "Description", "StarCount", "IsOfficial", "IsAutomated")
+  format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+  stdout <- processx::run("docker", c("search", paste0("--format=", format), search_string), echo = FALSE)$stdout
 
-  returned_results <- system(search_command, intern = TRUE)
+  if (stdout != "") {
+    df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+    colnames(df) <- columns
+    cont_list <- dplyr::as_tibble(df)
+    return(cont_list)
+  } else {
+    purrr::map(columns, ~ character(0)) |>
+      purrr::set_names(columns) |>
+      dplyr::as_tibble()
 
-  search_results <- dplyr::tibble(returned_results)
-  search_results <- search_results[2:nrow(search_results),]
-
-  cleaned_results <- tidyr::separate(
-    data = search_results,
-    col = returned_results,
-    into = c("Name", "Description", "Stars"),
-    sep = "(\\s+)(\\s+)",
-    remove = TRUE,
-    convert = TRUE,
-    fill = "right") |>
-    dplyr::mutate(Stars = dplyr::case_when(is.na(Stars) ~ Description,
-                                           TRUE ~ paste0(Stars))) |>
-    dplyr::mutate(Description = dplyr::case_when(Description != Stars ~ Description,
-                                                 Description == Stars ~ as.character(NA)))
-
-  return(cleaned_results)
+  }
 
 }
 
@@ -201,184 +173,35 @@ docker_logout <- function(){
 
 }
 
-#' Pull Rocker Images
-#'
-#' @param name Rocker image name from the [data_rocker_table]
-#' @param tag Version tag of rocker image. Will default to `latest`
-#'
-#' @export
-rocker_pull <- function(name, tag = NULL){
 
-  # Check for image name
-  data_rocker_table <- ContainR::data_rocker_table
-  if(!(name %in% data_rocker_table$name)){
-    cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
-    print(data_rocker_table)
-  }
-
-  # Set tag
-  if(is.null(tag)){
-    tag <- "latest"
-  } else {
-    tag <- tag
-  }
-
-  exec_sys_cmd <- switch(name,
-                         rstudio = paste0("docker pull rocker/rstudio:", tag),
-                         tidyerse = paste0("docker pull rocker/tidyverse:", tag),
-                         verse = paste0("docker pull rocker/verse:", tag),
-                         geospatial = paste0("docker pull rocker/geospatial:", tag),
-                         binder = paste0("docker pull rocker/binder:", tag))
-
-  system(exec_sys_cmd)
-}
 
 
 #' View Docker Images
 #'
 #' A basic system wrapper for equiv terminal command to view the Docker register
 #'
+#' @importFrom utils read.delim
+#'
 #' @export
 docker_images <- function(){
+  # https://github.com/dynverse/babelwhale/blob/0f8f9bab5e35150f05d60aba45eec77946f21f50/R/list_docker_images.R
+  # defaultImageTableFormat
+  columns <- c("Repository", "Tag", "Digest", "ID", "CreatedSince", "Size")
+  format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+  stdout <- processx::run("docker", c("image", "ls", paste0("--format=", format)), echo = FALSE)$stdout
 
-  cli::cli_h1("Container Images")
-  sys_cmd <- sys::exec_internal("docker", c("image",  "ls", "-a"))
-  sys_to_console(sys_cmd)
-}
-
-#' View Running Containers
-#'
-#' View current running containers.
-#'
-#' @export
-docker_containers <- function(){
-
-  cli::cli_h1("Container Images")
-  sys_cmd <- sys::exec_internal("docker", c("container",  "ls", "-a"))
-  sys_to_console(sys_cmd)
-}
-
-
-#' Rocker run
-#'
-#' Launch the active R project into a Rocker Rstudio container
-#' and opens a browser to the session.
-#'
-#' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
-#' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
-#' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
-#' this argument with the string of the *name* of the build. Built container images can be
-#' view by running the `docker_images()` function.
-#'
-#' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
-#'
-#' @param DISABLE_AUTH Bypass authentication and show the R session. Defaults to TRUE and will
-#' login when the session is launced in a browser.
-#'
-#' @param set_local Whether to clone the local `.config`, `.Renviron` and `.Rprofile` to container session or
-#' use the default settings. Defaults to `TRUE` and makes these config files available. Handy if the user has a
-#' particular panel and theme layout and want to access private repos for install and testing.
-#'
-#' @export
-rocker_run <- function(image = "rstudio", tag = NULL, DISABLE_AUTH = TRUE, set_local = TRUE){
-
-  cli::cli_alert_info("Checking Docker Install...")
-  docker_check()
-
-  # Checker for image name
-  data_rocker_table <- ContainR::data_rocker_table
-
-  # Set tag
-  if(is.null(tag)){
-    tag <- "latest"
+  if (stdout != "") {
+    df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+    colnames(df) <- columns
+    cont_list <- dplyr::as_tibble(df)
+    return(cont_list)
   } else {
-    tag <- tolower(tag)
+    purrr::map(columns, ~ character(0)) |>
+      purrr::set_names(columns) |>
+      dplyr::as_tibble()
   }
-
-
-  if((image %in% data_rocker_table$name)){
-    # Switch for changing rocker image based on image name
-    docker_image <- switch(image,
-                           rstudio = paste0("rocker/rstudio:", tag),
-                           tidyerse = paste0("rocker/tidyverse:", tag),
-                           verse = paste0("rocker/verse:", tag),
-                           geospatial = paste0("rocker/geospatial:", tag),
-                           binder = paste0("rocker/binder:", tag))
-
-  } else {
-    # If the name isnt one of rocker name then assume custom image
-    docker_image <- paste0(image, ":", tag)
-  }
-
-  # TODO check if image is in docker repo
-  cli::cli_h1("Launching Container {.path {docker_image}}")
-
-  # Setup names and projec paths
-  project_name <- tolower(basename(rstudioapi::getActiveProject()))
-  cli::cli_alert_info("Setting Project to: {.path {project_name}}")
-
-  # get working directory from local and set to repo directory
-  project_dir <- fs::path_wd()
-  cli::cli_alert_info("Working Directory Set to: {.path {project_dir}}")
-
-  if(isTRUE(set_local)) {
-
-    #Copying .Renviron
-    local_r_env <- paste0(fs::path_home_r(), "/.Renviron")
-    cli::cli_alert_info("Cloning .Renviron : {.path {local_r_env}}")
-
-    #Copy preferences stored in /inst/prefs
-    rstudio_prefs <- paste0(fs::path_home_r(), "/.config/rstudio")
-    cli::cli_alert_info("R Settings Cloned from: {.path {rstudio_prefs}}")
-
-    # set rprofile inside container to active project
-    rprof_file <- create_config_file(project_name = project_name)
-    #rprof_file <- "/Users/awwillc/Repos/replicats/inst/docker/.Rprofile"
-    cli::cli_alert_info("Cloning temp: {.path {rprof_file}}")
-
-  }
-
-  # # Docker launch command
-  # --rm remove the container automatically after it exits
-  # TODO allow for different run commands
-  exec_sys_cmd <- paste0(c(
-    paste0("docker run -d --rm -ti"),
-    paste0(" -e DISABLE_AUTH=", ifelse(isTRUE(DISABLE_AUTH), DISABLE_AUTH, "FALSE"), sep = ""),
-    paste0(" -p 127.0.0.1:8787:8787"),
-    paste0(" -v ", project_dir, ":/home/rstudio/", basename(project_dir), sep = ""),
-    if(isTRUE(set_local)) {
-      c(paste0(" -v ", rstudio_prefs, ":/home/rstudio/.config/rstudio", sep = ""),
-        paste0(" -v ", local_r_env, ":/home/rstudio/.Renviron", sep = ""),
-        paste0(" -v ", rprof_file, ":/home/rstudio/.Rprofile", sep = ""))
-    },
-    paste0(" --name ", project_name),
-    paste0(" ", docker_image)
-  ), collapse = "")
-
-  cli::cli_alert_info("{.emph Running Command: } {exec_sys_cmd}",
-                      class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
-
-  system(exec_sys_cmd)
-
-  cli::cli_alert_info("Launching {.path {docker_image}} in you browser...")
-  utils::browseURL("http://localhost:8787")
-
-  #
-  # processx::process$new(command = "docker",
-  #                       args = c(
-  #                         "run", "-d", "--rm", "-ti",
-  #                         "-e", "DISABLE_AUTH=TRUE",
-  #                         "-p", "127.0.0.1:8787:8787",
-  #                         "-v", paste(trimws(rstudio_prefs),  ":/home/rstudio/.config/rstudio", sep=""),
-  #                         "-v", paste(trimws(local_r_env),  ":/home/rstudio/.Renviron", sep=""),
-  #                         "--name", paste(trimws(tolower(project_name))),
-  #                         docker_image),
-  #                       stdout = "|",
-  #                       "stderr" = "|",
-  #                       echo_cmd = TRUE,
-  #                       cleanup = FALSE)
-
 }
+
 
 #' Create a Dockerfile
 #'
@@ -413,7 +236,7 @@ docker_file <- function(dockerfile = "docker/Dockerfile",
                           include_python = FALSE){
 
   cli::cli_h1("Creating Dockerfile")
-
+  name <- match.arg(name)
   # Check for image name
   data_rocker_table <- ContainR::data_rocker_table
 
@@ -427,7 +250,7 @@ docker_file <- function(dockerfile = "docker/Dockerfile",
 
   # rocker name match check
   if(!(name %in% data_rocker_table$name)){
-    cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
+    cli::cli_abort("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)
   }
 
@@ -545,202 +368,176 @@ docker_push <- function(name = NULL, tag = NULL){
 
 }
 
-# Console alert helper
-sys_to_console <- function(x){
+#' View Running Containers
+#'
+#' View current running containers.
+#'
+#' @export
+docker_container <- function(){
 
-  if(x$status == 1){
-    cli::cli_alert_danger("Error")
+  # TODO add name filter in case other containers are running
+
+  # defaultContainerTableFormat
+  columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
+  format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+  stdout <- processx::run("docker", c("ps", paste0("--format=", format)), echo = FALSE)$stdout
+
+  if (stdout != "") {
+    df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+    colnames(df) <- columns
+    cont_list <- dplyr::as_tibble(df)
+    return(cont_list)
   } else {
-    cap_out <- rawToChar(x$stdout)
-    cli::cli_alert_info(cap_out)
-
+    purrr::map(columns, ~ character(0)) |>
+      purrr::set_names(columns) |>
+      dplyr::as_tibble()
   }
+}
+
+
+#' @title Define the connection to the docker container
+#'
+#' @details This object defines the connection to the docker image when it can accept
+#' external inputs
+#'
+#' @param name the name of the docker image
+
+#' @return dockefile object
+#' @exportClass docker_connection docker_container
+#' @export
+docker_connection <- function(name){
+
+  if(isFALSE(dockered$is_alive())){
+    stop("No Containers are currently running")
+  }
+
+  # defaultContainerTableFormat
+  columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
+  format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+  stdout <- processx::run("docker", c("ps", paste0("--format=", format)), echo = FALSE)$stdout
+
+  df <- utils::read.delim(text = stdout,
+                          sep = "\t",
+                          header = FALSE,
+                          stringsAsFactors = FALSE)
+
+  colnames(df) <- columns
+  cont_list <- dplyr::as_tibble(df)
+
+  if(name != cont_list$Names){
+    cli::cli_abort("{.var {name}} container not found.")
+  } else {
+    docker_info <- cont_list |>
+      dplyr::filter(Names == name)
+  }
+
+  name = docker_info$Names
+  internal_port <- strsplit(docker_info$Ports,"->")[[1]][1]
+  docker_port <- strsplit(docker_info$Ports,"->")[[1]][2]
+
+  docker_status <- strsplit(docker_info$Status," ")[[1]][1]
+
+  structure(
+    .Data        = name,
+    .name        = name,
+    .image       = docker_info$Image,
+    .port        = internal_port,
+    .docker_port = docker_port,
+    .docker_id   = docker_info$ID,
+    .status = docker_info$Status,
+    .pid = dockered$get_pid(),
+    class = c("docker_connection","docker_container")
+  )
+}
+
+#' Print method
+#'
+#' @param x Name of image
+#' @param ... Additional params
+#'
+#' @export
+print.docker_connection <- function(x,...){
+
+  container <- docker_connection(attr(x,".name"))
+
+  cat(paste("<", cli::style_bold("Docker Container:"), attr(x,".name"),
+            "|", cli::style_bold("Port:"), attr(x,".port"),
+            "|", cli::style_bold("Pid:"), attr(x,".pid"),
+            "|", cli::style_bold("Status:"), cli::col_green(attr(x,".status")),
+            "|", cli::style_bold("image:"), attr(x,".port"),
+            ">"))
 
 }
 
-# Write the install_libs_local.sh so this can be dynamically
-# updated.
-write_install_bash_file <- function(x){
+#' Run a Docker Container
+#'
+#' Currently only `docker` is available but plans are to implement `podman` in the future.
+#'
+#' @param cmd System command. `docker` as default until other container as are supported.
+#' @param proc_args A character string of arguments to the `cmd`.
+#' @param name Character string of the docker image name.
+#'
+#' @export
+docker_run <- function(cmd, proc_args, name){
 
-  bash_file <- "docker/scripts/install_libs_local.sh"
 
-    if(isTRUE(file.exists(bash_file))){
-    cli::cli_alert_info("Updating: {.path {bash_file}}")
+  if(isTRUE(dockered$is_alive())){
+    cli::cli_alert_info(dockered$format())
+  } else {
+    # global assign for intrim testing
+    dockered <<- processx::process$new(command = cmd,
+                                       args = proc_args,
+                                       pty = TRUE) #only supported on Unix sys
   }
 
-  packages <- x
-  Source <- NULL
+  # dockered$is_alive()
+  # dockered$get_pid()
+  # dockered$get_status()
+  # dockered$get_name()
+  # dockered$get_cmdline()
+  # dockered$get_wd()
+  # dockered$get_username()
 
-  packs <- dplyr::tibble(Package = packages$package,
-                         Version = packages$ondiskversion,
-                         Source = packages$source)
-
-  # hacky work around
-  CRAN_packs <- packs |>
-    dplyr::filter(Source == stringr::str_match_all(Source,
-                                                   pattern = "CRAN \\(R \\d.\\d.\\d\\)"))
-
-  cli::cli_alert_info("{.path {nrow(CRAN_packs)}} lib{?s}")
-  cli::cli_alert_info("Including: {.val {CRAN_packs$Package}}")
-
-  # trailing slash in bash file so hack fix
-  cran_packs_first <- paste0("\t", CRAN_packs$Package[0 -length(CRAN_packs$Package)], " \\")
-  cran_packs_last <- paste0("\t", CRAN_packs$Package[length(CRAN_packs$Package) - 0], "")
-
-  # Filter to GIThub repos and remove local installs
-  GITHUB_packs <- packs |>
-    dplyr::filter(Source != stringr::str_match_all(Source,
-                                                   pattern = "CRAN \\(R \\d.\\d.\\d\\)")) |>
-    dplyr::filter(Source != "local") # TODO check correct string match
-
-
-  github_installs <- GITHUB_packs |>
-    dplyr::mutate(Source = stringr::str_extract_all(Source,
-                                                    pattern = "(.*?)@",
-                                                    simplify = TRUE)) |>
-    dplyr::mutate(Source = stringr::str_extract_all(Source,
-                                                    pattern = "\\(([\\s\\S]*)$",
-                                                    simplify = TRUE)) |>
-    dplyr::mutate(Source = stringr::str_remove_all(Source,
-                                                   pattern = "\\((.*?)")) |>
-    dplyr::mutate(Source = stringr::str_remove_all(Source,
-                                                   pattern = "@")) |>
-    dplyr::select(Source) |>
-    purrr::pluck("Source")
-
-
-  if(nrow(GITHUB_packs) > 0){
-    cli::cli_alert_info("Including {.path {nrow(GITHUB_packs)}} GitHub Package{?s}")
-    cli::cli_alert_info("{.val {GITHUB_packs$Package}}")
-  }
-
-  # Command layout for bash script
-  installR_script <- paste(c(
-    paste("#!/bin/bash"),
-    paste(""),
-    paste("set -e"),
-    paste(""),
-    paste("NCPUS=${NCPUS:--1}"),
-    paste(""),
-    paste("CRAN=${1:-${CRAN:-\"https://cran.r-project.org\"}}"),
-    paste(""),
-    paste("ARCH=$(uname -m)"),
-    paste(""),
-    paste("export DEBIAN_FRONTEND=noninteractive"),
-    paste(""),
-    paste("UBUNTU_VERSION=$(lsb_release -sc)"),
-    paste("CRAN_SOURCE=${CRAN/\"__linux__/$UBUNTU_VERSION/\"/\"\"}"),
-    paste(""),
-    paste("if [ \"$ARCH\" = \"aarch64\" ]; then"),
-    paste("\t", "CRAN=$CRAN_SOURCE"),
-    paste("fi"),
-    paste(""),
-    if(length(github_installs) > 0) {
-      c(paste("Rscript -e", paste("\"remotes::install_github(\'", github_installs , "\')\" ", sep = "") ," "))
-    },
-    paste(""),
-    paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),
-    paste(cran_packs_first),
-    paste(cran_packs_last)
-  ),
-  collapse = "\n")
-
-  writeLines(installR_script, con = bash_file, sep = "")
-
-  if(isTRUE(file.exists(bash_file))){
-    cli::cli_alert_success("Bash file updated: {.path {bash_file}}")
-  }
-  return(bash_file)
 }
 
-# Config file that will overwrite the Rstudio one
-# and then when session is launch it will activate working dir
-create_config_file <- function(project_name){
 
-  rprofile <-  paste0(tempdir(), "/.Rprofile")
+#' Stop the active docker container
+#'
+#' @param x either the name of the docker container or a docker_connection
+#'
+#' @return NULL
+#'
+#' @export
+docker_stop <- function(x) {
+  UseMethod("docker_stop", x)
+}
+
+#' @export
+docker_stop.character <- function(x) {
+  conn <- docker_connection(x)
+  docker_stop.docker_connection(conn)
+}
+
+#' @export
+docker_stop.docker_connection <- function(x) {
+
+  id <- attr(x,".docker_id")
 
   project_name <- basename(rstudioapi::getActiveProject())
 
-  work_directory <- paste0("setwd(\"/home/rstudio/", project_name, "\")")
+  cli::cli_h1("Stopping {.val {id}} container")
 
-  writeLines(
-    c(".First <- function() {",
-      work_directory,
-      "setHook(\"rstudio.sessionInit\", function(newSession) {
-    if (newSession && is.null(rstudioapi::getActiveProject()))
-      rstudioapi::openProject(rstudioapi::initializeProject())
-  }, action = \"append\")
+  cmd_stop <- processx::run(command = "docker",
+                            args = c("stop",
+                                     project_name),
+                            echo_cmd = FALSE,
+                            echo = FALSE,
+                            spinner = TRUE)
 
-  invisible(TRUE)
+  dockered$kill()
 
-}"),
-con = rprofile,
-sep = "\n")
-
-  # check to ensure the temp profile was created
-  if(isTRUE(file.exists(rprofile))) cli::cli_alert_success(".Rprofile Created")
-
-  return(rprofile)
-
-}
-
-# Setup the docker files and folders
-docker_folder_setup <- function(){
-
-  if(!fs::dir_exists("docker")) {
-    fs::dir_create("docker")
-  } else if(fs::dir_exists("docker")) {
-    cli::cli_alert_success("{.path /docker/}")
+  if(is.null(attr(result,".status"))){
+    cli::cli_alert_success('{.path {gsub("[\r\n]", "", cmd_stop$stdout)}} Successfully stopped.')
   }
 
-  if(!fs::dir_exists("docker/scripts")) {
-    fs::dir_create("docker/scripts")
-  } else if(fs::dir_exists("docker/scripts")) {
-    cli::cli_alert_success("{.path /docker/scripts}")
-  }
-
-  if(!fs::file_exists("docker/scripts/install_libs_local.sh")) {
-    fs::file_create("docker/scripts/install_libs_local.sh")
-  } else if(fs::file_exists("docker/scripts/install_libs_local.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_libs_local.sh}")
-  }
-
-  if(!fs::file_exists("docker/Dockerfile")) {
-    fs::file_create("docker/Dockerfile")
-  } else if(fs::file_exists("docker/Dockerfile")) {
-    cli::cli_alert_success("{.path /docker/Dockerfile}")
-  }
-
-  if(!fs::file_exists("docker/scripts/install_python.sh")) {
-    get_extdata("install_python.sh")
-  } else if(fs::file_exists("docker/scripts/install_python.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_python.sh}")
-  }
-
-  if(!fs::file_exists("docker/scripts/install_pyenv.sh")) {
-    get_extdata("install_pyenv.sh")
-  } else if(fs::file_exists("docker/scripts/install_pyenv.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_pyenv.sh}")
-  }
-
-  if(!fs::file_exists("docker/scripts/install_additional.sh")) {
-    get_extdata("install_additional.sh")
-  } else if(fs::file_exists("docker/scripts/install_additional.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_additional.sh}")
-  }
-
-  fs::dir_tree("docker")
-
-}
-
-# Grabs the additional rocker scripts in extdata
-get_extdata <- function(file){
-
-  x <- system.file("extdata",
-                   file,
-                   package="ContainR",
-                   mustWork = TRUE)
-  fs::file_copy(x,
-                "docker/scripts",
-                overwrite = TRUE)
 }
