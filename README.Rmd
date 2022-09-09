@@ -135,3 +135,9 @@ rocker_run(image = "user/imagename")
 ----
 
 There are similar packages available such as [dockr](https://github.com/smaakage85/dockr) or [devindocker](https://github.com/ThinkR-open/devindocker) which provide various levels of functionality. We also recommend checking these out to see if these address your requirements. 
+
+### References 
+
+**ContainR** was created using the following amazing packages and developers: 
+
+The team at Rocker-Versioned 
