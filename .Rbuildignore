@@ -4,6 +4,6 @@
 ^\.github$
 ^\.local$
 ^README\.Rmd$
-
 ^doc$
 ^Meta$
+^R/deleteme\.R$
