@@ -2,9 +2,11 @@
 
 check_images <- function(image, tag){
 
-  dock_image <- docker_images()
+  repo_images <- docker_images() |> dplyr::filter(Repository %in% image)
+
   data_rocker_table <- ContainR::data_rocker_table
-  if(image %in% dock_image$Repository) {
+
+  if(image %in% repo_images$Repository) {
 
     image <- image
 
@@ -20,9 +22,8 @@ check_images <- function(image, tag){
     cli::cli_alert_info("Using: {.var {image}}")
 
   } else {
-    cli::cli_abort("{.var {image}} not a Rocker image or in Docker Register: {.fun docker_image}")
+    cli::cli_abort("{.var {image}} not a Rocker image or in Docker Register: {.fun docker_images}")
   }
-
   return(image)
 }
 
@@ -51,8 +52,8 @@ rocker_args <- function(DISABLE_AUTH, use_local, image){
 
   # set options
   docker_opts <- c("run", "--rm", "-it")
-  set_env <- c("-e", paste0("DISABLE_AUTH=", ifelse(isTRUE(DISABLE_AUTH), DISABLE_AUTH, "FALSE")))
-  set_name <- c("--name", project_name)
+  set_env <- c("-e", paste0("DISABLE_AUTH=", ifelse(isTRUE({{DISABLE_AUTH}}), {{DISABLE_AUTH}}, "FALSE")))
+  set_name <- c("--name", proj_name)
   image_name <- c(image)
 
   # Argument string for docker
@@ -62,18 +63,6 @@ rocker_args <- function(DISABLE_AUTH, use_local, image){
 
 }
 
-# Console alert helper
-sys_to_console <- function(x){
-
-  if(x$status == 1){
-    cli::cli_alert_danger("Error")
-  } else {
-    cap_out <- rawToChar(x$stdout)
-    cli::cli_alert_info(cap_out)
-
-  }
-
-}
 
 
 # Write the install_libs_local.sh so this can be dynamically
@@ -109,7 +98,7 @@ write_install_bash_file <- function(x){
   GITHUB_packs <- packs |>
     dplyr::filter(Source != stringr::str_match_all(Source,
                                                    pattern = "CRAN \\(R \\d.\\d.\\d\\)")) |>
-    dplyr::filter(Source != "local") #
+    dplyr::filter(Source != "local")
 
 
   if(nrow(GITHUB_packs) > 0){
@@ -224,44 +213,30 @@ docker_folder_setup <- function(print_tree = FALSE){
 
   if(!fs::dir_exists("docker")) {
     fs::dir_create("docker")
-  } else if(fs::dir_exists("docker")) {
-    cli::cli_alert_success("{.path /docker/}")
   }
 
   if(!fs::dir_exists("docker/scripts")) {
     fs::dir_create("docker/scripts")
-  } else if(fs::dir_exists("docker/scripts")) {
-    cli::cli_alert_success("{.path /docker/scripts}")
   }
 
   if(!fs::file_exists("docker/scripts/install_libs_local.sh")) {
     fs::file_create("docker/scripts/install_libs_local.sh")
-  } else if(fs::file_exists("docker/scripts/install_libs_local.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_libs_local.sh}")
   }
 
   if(!fs::file_exists("docker/Dockerfile")) {
     fs::file_create("docker/Dockerfile")
-  } else if(fs::file_exists("docker/Dockerfile")) {
-    cli::cli_alert_success("{.path /docker/Dockerfile}")
   }
 
   if(!fs::file_exists("docker/scripts/install_python.sh")) {
     get_extdata("install_python.sh")
-  } else if(fs::file_exists("docker/scripts/install_python.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_python.sh}")
   }
 
   if(!fs::file_exists("docker/scripts/install_pyenv.sh")) {
     get_extdata("install_pyenv.sh")
-  } else if(fs::file_exists("docker/scripts/install_pyenv.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_pyenv.sh}")
   }
 
   if(!fs::file_exists("docker/scripts/install_additional.sh")) {
     get_extdata("install_additional.sh")
-  } else if(fs::file_exists("docker/scripts/install_additional.sh")) {
-    cli::cli_alert_success("{.path /docker/scripts/install_additional.sh}")
   }
 
   if(isTRUE(print_tree)){

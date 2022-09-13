@@ -1,0 +1,236 @@
+
+# Constructors ------------------------------------------------------------
+command <- function(process, commands, options, ...){
+
+  if (!is.character(process)) stop("X must be character")
+  if (!is.character(commands)) stop("X must be character")
+  if (!is.character(options)) stop("X must be character")
+
+  # cmd must be a command type of docker or podman
+  proc <- match.arg(process, c("docker", "podman"))
+  comm <- match.arg(commands, c("run", "image", "container", "search", "build", "stop"))
+  opts <- c(options) # long string or search TODO tolower()
+
+  value <- list(process = proc,
+                commands = comm,
+                options = opts)
+
+  structure(.Data = value,
+            class = c("command"))
+
+}
+
+containr <- function(image = "rocker/rstudio", name = NULL, DISABLE_AUTH = TRUE, use_local = TRUE, ...){
+
+  # Check and Set image
+  if(!is.character(image)) stop("image must be character")
+  image <- check_images(image = image)
+  image_id <- docker_images() |> dplyr::filter(Repository %in% image) |> purrr::pluck("ID")
+
+  # Check and Set name
+  if(!is.null(name) && !is.character(name)) stop("name must be character")
+
+  if(is.null(name)) {
+    name <- basename(rstudioapi::getActiveProject())
+  } else {
+    name <- name
+  }
+
+  # Check and Set logical
+  if(!is.logical(DISABLE_AUTH)) stop("AUTH must be TRUE or FALSE")
+  if(!is.logical(use_local)) stop("AUTH must be TRUE or FALSE")
+
+
+  commands <- rocker_args(DISABLE_AUTH = TRUE, use_local = TRUE, image = "testing")
+
+  value <- list(process = "docker", # set to docker only for now
+                commands = commands,
+                image = image,
+                ID = image_id,
+                name = name,
+                AUTH = DISABLE_AUTH,
+                local = use_local)
+
+  structure(.Data = value,
+            .ID = "",
+            class = c("containr"))
+}
+
+# Methods -----------------------------------------------------------------
+
+docker <- function(x) {
+  UseMethod("docker")
+}
+
+docker.command <- function(x, ...) {
+
+  # TODO update to use switch()
+  if(x$commands == "image"){
+    #image options
+    columns <- c("Repository", "Tag", "Digest", "ID", "CreatedSince", "Size")
+  }
+
+  if(x$commands == "container"){
+    #container options
+    columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
+  }
+
+  if(x$commands == "search"){
+    #search options
+    columns <- c("Name", "Description", "StarCount", "IsOfficial", "IsAutomated")
+    format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+    stdout <- processx::run(command = x$process,
+                            args = c(x$commands, paste0("--format=", format), x$options),
+                            echo = FALSE)$stdout
+  } else {
+    format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+    stdout <- processx::run(command = x$process,
+                            args = c(x$commands, x$options, paste0("--format=", format)),
+                            echo = FALSE)$stdout
+  }
+
+
+  if (stdout != "") {
+    df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+    colnames(df) <- columns
+    cont_list <- dplyr::as_tibble(df)
+    return(cont_list)
+  } else {
+    purrr::map(columns, ~ character(0)) |>
+      purrr::set_names(columns) |>
+      dplyr::as_tibble()
+  }
+
+
+}
+
+run <- function(x){
+  UseMethod("run")
+}
+
+run.default <- function(x, ...){
+  cat("This is a generic function\n")
+}
+
+run.containr <- function(x, ...){
+
+  dockered <- processx::process$new(command = x$process,
+                                    args = x$commands,
+                                    pty = TRUE) #only supported on Unix sys
+
+
+  Sys.sleep(3)
+  columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
+  format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+  stdout <- processx::run("docker", c("ps", paste0("--format=", format)), echo = FALSE)$stdout
+
+  df <- utils::read.delim(text = stdout,
+                          sep = "\t",
+                          header = FALSE,
+                          stringsAsFactors = FALSE)
+
+  colnames(df) <- columns
+  docker_info <- dplyr::as_tibble(df) |> dplyr::filter(Names == x$name)
+
+  name = docker_info$Names
+  internal_port <- strsplit(docker_info$Ports,"->")[[1]][1]
+  docker_port <- strsplit(docker_info$Ports,"->")[[1]][2]
+  docker_status <- strsplit(docker_info$Status," ")[[1]][1]
+
+  # get the env set object
+  docker_id <- docker_info$ID
+  port <- internal_port
+  docker_port <- docker_port
+  pid <-  dockered$get_pid()
+  status <-  dockered$get_status()
+  image <- docker_info$Image
+
+  cat(paste("<", cli::style_bold("Process:"), x$process,
+            "|", cli::style_bold("ID:"), docker_id,
+            "|", cli::style_bold("Port:"), port,
+            "|", cli::style_bold("Docker Port:"), docker_port,
+            "|", cli::style_bold("Pid:"), pid,
+            "|", cli::style_bold("Status:"), cli::col_green(status), # ifelse red then green
+            "|", cli::style_bold("Image:"), image,
+            ">"))
+
+}
+
+
+# Print Methods -----------------------------------------------------------
+
+print.command <- function(x, ...){
+
+  cat(paste(x$process, x$commands, x$options))
+
+}
+
+print.containr <- function(x){
+  cat(paste(" |", cli::style_bold("Process:"),
+            if(length(Sys.which("docker")) > 0) {
+              cli::col_green(x$process)
+            } else {
+              cli::col_red(x$process, " Not Running")
+            }, "\n",
+            "|", cli::style_bold("Image:"), x$image, "\n",
+            "|", cli::style_bold("Project:"), x$name, "\n",
+            "|", cli::style_bold("Auth:"),
+            if(isTRUE(x$AUTH)) {
+              cli::col_blue(x$AUTH)
+            } else {
+              cli::col_yellow(x$AUTH)
+            }, "\n",
+            "|", cli::style_bold("Local:"),
+            if(isTRUE(x$local)) {
+              cli::col_blue(x$local)
+            } else {
+              cli::col_yellow(x$local)
+            }, "\n"),
+      c("|", cli::style_bold("Commands:"), cli::style_italic(x$commands)))
+}
+
+print.run <- function(x, ...){
+
+}
+
+
+# Containr functions  -----------------------------------------------------
+
+docker_images <- function(){
+
+  obj_check <- command(process = "docker",
+                       commands = "image",
+                       options = "list")
+  docker(obj_check)
+
+}
+
+docker_containers <- function(){
+
+  obj_check <- command(process = "docker",
+                       commands = "container",
+                       options = "list")
+  docker(obj_check)
+
+}
+
+docker_search <- function(search = "rstudio"){
+
+  obj_check <- command(process = "docker",
+                       commands = "search",
+                       options = search)
+  docker(obj_check)
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
