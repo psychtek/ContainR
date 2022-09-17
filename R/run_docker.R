@@ -174,8 +174,6 @@ docker_logout <- function(){
 }
 
 
-
-
 #' View Docker Images
 #'
 #' A basic system wrapper for equiv terminal command to view the Docker register
@@ -397,76 +395,48 @@ docker_container <- function(){
 
 #' @title Define the connection to the docker container
 #'
-#' @details This object defines the connection to the docker image when it can accept
-#' external inputs
+#' @details This object defines the connection to the docker image
 #'
 #' @param name the name of the docker image
 
 #' @return dockefile object
-#' @exportClass docker_connection docker_container
+#' @exportClass containr
 #' @export
-docker_connection <- function(name){
+containr <- function(cmd, proc_args, name, ...){
 
-  if(isFALSE(dockered$is_alive())){
-    stop("No Containers are currently running")
-  }
+  if (!is.character(cmd)) stop("X must be character")
+  if (!is.character(proc_args)) stop("X must be character")
+  if (!is.character(name)) stop("X must be character")
 
-  # defaultContainerTableFormat
-  columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
-  format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
-  stdout <- processx::run("docker", c("ps", paste0("--format=", format)), echo = FALSE)$stdout
+  thisEnv <- globalenv()
 
-  df <- utils::read.delim(text = stdout,
-                          sep = "\t",
-                          header = FALSE,
-                          stringsAsFactors = FALSE)
+  containr <- vector("list", 3)
 
-  colnames(df) <- columns
-  cont_list <- dplyr::as_tibble(df)
+  # cmd must be a command type of docker or podman
+  containr$cmd <- match.arg(cmd, c("docker", "podman"))
+  containr$args <- c(proc_args)
+  containr$name <- c(name) # TODO change to dynamic proj env
 
-  if(name != cont_list$Names){
-    cli::cli_abort("{.var {name}} container not found.")
-  } else {
-    docker_info <- cont_list |>
-      dplyr::filter(Names == name)
-  }
+  process <- structure(.Data = containr$name,
+                       .name = containr$name,
+                       .args = containr$args,
+                       .cmd = containr$cmd,
+                       .docker_id = "",
+                       .port = "",
+                       .docker_port = "",
+                       .pid = "",
+                       .status = "",
+                       .image = "",
+                       class = c("containr", containr$cmd))
 
-  name = docker_info$Names
-  internal_port <- strsplit(docker_info$Ports,"->")[[1]][1]
-  docker_port <- strsplit(docker_info$Ports,"->")[[1]][2]
+  ## Define the value of the list within the current environment.
+  assign(containr$name, process, envir = thisEnv)
 
-  docker_status <- strsplit(docker_info$Status," ")[[1]][1]
-
-  structure(
-    .Data        = name,
-    .name        = name,
-    .image       = docker_info$Image,
-    .port        = internal_port,
-    .docker_port = docker_port,
-    .docker_id   = docker_info$ID,
-    .status = docker_info$Status,
-    .pid = dockered$get_pid(),
-    class = c("docker_connection","docker_container")
-  )
 }
 
-#' Print method
-#'
-#' @param x Name of image
-#' @param ... Additional params
-#'
-#' @export
-print.docker_connection <- function(x,...){
-
-  container <- docker_connection(attr(x,".name"))
-
-  cat(paste("<", cli::style_bold("Docker Container:"), attr(x,".name"),
-            "|", cli::style_bold("Port:"), attr(x,".port"),
-            "|", cli::style_bold("Pid:"), attr(x,".pid"),
-            "|", cli::style_bold("Status:"), cli::col_green(attr(x,".status")),
-            "|", cli::style_bold("image:"), attr(x,".port"),
-            ">"))
-
+# generic method for containr
+run <- function(x) {
+  UseMethod("run")
 }
 
 #' Run a Docker Container
@@ -478,26 +448,52 @@ print.docker_connection <- function(x,...){
 #' @param name Character string of the docker image name.
 #'
 #' @export
-docker_run <- function(cmd, proc_args, name){
+run.docker <- function(x, ...){
 
+  if("running" == attr(x, ".status")){
+    print(x)
+  } else if("" == attr(x, ".status")){
+    dockered <- processx::process$new(command = attr(x, ".cmd"),
+                                      args = attr(x, ".args"),
+                                      pty = TRUE) #only supported on Unix sys
 
-  if(isTRUE(dockered$is_alive())){
-    cli::cli_alert_info(dockered$format())
-  } else {
-    # global assign for intrim testing
-    dockered <<- processx::process$new(command = cmd,
-                                       args = proc_args,
-                                       pty = TRUE) #only supported on Unix sys
+    # defaultContainerTableFormat
+    Sys.sleep(3)
+    columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
+    format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
+    stdout <- processx::run("docker", c("ps", paste0("--format=", format)), echo = FALSE)$stdout
+
+    df <- utils::read.delim(text = stdout,
+                            sep = "\t",
+                            header = FALSE,
+                            stringsAsFactors = FALSE)
+
+    colnames(df) <- columns
+    docker_info <- dplyr::as_tibble(df) |> dplyr::filter(Names == name)
+
+    name = docker_info$Names
+    internal_port <- strsplit(docker_info$Ports,"->")[[1]][1]
+    docker_port <- strsplit(docker_info$Ports,"->")[[1]][2]
+    docker_status <- strsplit(docker_info$Status," ")[[1]][1]
+
+    # get the env set object
+    attr(x,".docker_id") <- docker_info$ID
+    attr(x,".port") <- internal_port
+    attr(x,".docker_port") <- docker_port
+    attr(x, ".pid") <-  dockered$get_pid()
+    attr(x, ".status") <-  dockered$get_status()
+    attr(x,".image") <- docker_info$Image
+
+    obj_name <- objects(name = .GlobalEnv, pattern = attr(x, ".name"))
+    assign(obj_name, x, envir = globalenv())
   }
+  dockered$format()
+  print(x)
+}
 
-  # dockered$is_alive()
-  # dockered$get_pid()
-  # dockered$get_status()
-  # dockered$get_name()
-  # dockered$get_cmdline()
-  # dockered$get_wd()
-  # dockered$get_username()
-
+# method for class containr$cmd set as podman
+run.podman <- function(x, ...){
+  cli::cli_alert_info("Running podman")
 }
 
 
@@ -509,35 +505,57 @@ docker_run <- function(cmd, proc_args, name){
 #'
 #' @export
 docker_stop <- function(x) {
-  UseMethod("docker_stop", x)
+  UseMethod("docker_stop")
 }
 
-#' @export
-docker_stop.character <- function(x) {
-  conn <- docker_connection(x)
-  docker_stop.docker_connection(conn)
-}
 
 #' @export
-docker_stop.docker_connection <- function(x) {
+docker_stop.containr <- function(x, ...) {
 
-  id <- attr(x,".docker_id")
+  if("" == attr(x, ".status")){
+    print(x)
+  } else {
+    id <- attr(x,".cmd")
+    pid <- attr(x, ".pid")
+    project_name <- attr(x,".name")
 
-  project_name <- basename(rstudioapi::getActiveProject())
+    cmd_stop <- processx::run(command = id,
+                              args = c("stop",
+                                       project_name),
+                              echo_cmd = FALSE,
+                              echo = FALSE,
+                              spinner = TRUE)
 
-  cli::cli_h1("Stopping {.val {id}} container")
+    # get the env set object
+    attr(x,".docker_id") <- ""
+    attr(x,".port") <- ""
+    attr(x,".docker_port") <- ""
+    attr(x, ".pid") <-  ""
+    attr(x, ".status") <-  ""
+    attr(x,".image") <- ""
 
-  cmd_stop <- processx::run(command = "docker",
-                            args = c("stop",
-                                     project_name),
-                            echo_cmd = FALSE,
-                            echo = FALSE,
-                            spinner = TRUE)
+    obj_name <- objects(name = .GlobalEnv, pattern = attr(x, ".name"))
+    assign(obj_name, x, envir = globalenv())
 
-  dockered$kill()
-
-  if(is.null(attr(result,".status"))){
-    cli::cli_alert_success('{.path {gsub("[\r\n]", "", cmd_stop$stdout)}} Successfully stopped.')
+    print(x)
   }
+
+}
+
+#' Print method for active comtainer
+#'
+#' @param x Name of image
+#' @param ... Additional params
+#'
+#' @export
+print.containr <- function(x, ...){
+
+  cat(paste("<", cli::style_bold("Process:"), attr(x,".cmd"),
+            "|", cli::style_bold("ID:"), attr(x,".docker_id"),
+            "|", cli::style_bold("Port:"), attr(x,".port"),
+            "|", cli::style_bold("Pid:"), attr(x,".pid"),
+            "|", cli::style_bold("Status:"), cli::col_green(attr(x,".status")), # ifelse red then green
+            "|", cli::style_bold("Image:"), attr(x,".image"),
+            ">"))
 
 }

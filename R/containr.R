@@ -1,5 +1,8 @@
 containr <- R6::R6Class("containr",
   cloneable = FALSE,
+
+# Public Functions --------------------------------------------------------
+
   public = list(
 
     #' Start a ContainR
@@ -132,6 +135,9 @@ containr <- R6::R6Class("containr",
       invisible(self)
     }
   ),
+
+# Private Functions -------------------------------------------------------
+
 
   private = list(
 

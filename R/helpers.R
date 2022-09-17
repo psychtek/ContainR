@@ -51,7 +51,9 @@ rocker_args <- function(DISABLE_AUTH, use_local, image){
   ports <- c("-p", "127.0.0.1:8787:8787")
 
   # set options
-  docker_opts <- c("run", "--rm", "-it")
+  # removed -it dur to "the input device is not a TTY"
+  # more here: https://stackoverflow.com/questions/43099116/error-the-input-device-is-not-a-tty
+  docker_opts <- c("run", "--rm")
   set_env <- c("-e", paste0("DISABLE_AUTH=", ifelse(isTRUE({{DISABLE_AUTH}}), {{DISABLE_AUTH}}, "FALSE")))
   set_name <- c("--name", proj_name)
   image_name <- c(image)

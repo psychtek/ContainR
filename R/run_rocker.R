@@ -36,63 +36,137 @@ rocker_pull <- function(name, tag = NULL){
   system(exec_sys_cmd)
 }
 
-#' Rocker run
-#'
-#' Launch the active R project into a Rocker Rstudio container
-#' and opens a browser to the session.
-#'
-#' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
-#' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
-#' visit \url{https://rocker-project.org/images/}. If you ran `docker_build()` then supply
-#' this argument with the string of the *name* of the build. Built container images can be
-#' view by running the `docker_images()` function.
-#'
-#' @param tag Version number of stack. Defaults to the `:latest` tag if none is supplied.
-#'
-#' @param DISABLE_AUTH Bypass authentication and show the R session. Defaults to TRUE and will
-#' login when the session is launced in a browser.
-#'
-#' @param use_local Whether to clone the local `.config`, `.Renviron` and `.Rprofile` to container session or
-#' use the default settings. Defaults to `TRUE` and makes these config files available. Handy if the user has a
-#' particular panel and theme layout and want to access private repos for install and testing.
-#'
-#' @export
-rocker_run <- function(image = "testing",
-                       tag = NULL,
-                       DISABLE_AUTH = TRUE,
-                       use_local = TRUE){
-
-
-  project_name = tolower(basename(rstudioapi::getActiveProject()))
-
-  data_rocker_table <- ContainR::data_rocker_table
-
-  # Set tag
-  if(is.null(tag)){
-    tag <- "latest"
-  } else {
-    tag <- tolower(tag)
-  }
-
-  image <- check_images(image = image, tag = tag)
-
-  processed_args <- rocker_args(DISABLE_AUTH, use_local, image)
-
-  docker_run(cmd = "docker", proc_args = processed_args, name = project_name)
-
-  # dockered <- processx::process$new(command = "docker",
-  #                                   args = proc_args,
-  #                                   pty = TRUE) # currently only supported on Unix systems
-  if(isTRUE(dockered$is_alive())){
-    cli::cli_h1("Running: {.val {image}} as container: {.val {project_name}}")
-    cli::cli_alert_info("Launching {.path {image}} in you browser...")
-    utils::browseURL("http://localhost:8787")
-  }
-
-}
+#
+# rocker_run <- function(image = "testing",
+#                        tag = NULL,
+#                        DISABLE_AUTH = TRUE,
+#                        use_local = TRUE){
+#
+#
+#   # Container Name from active project
+#   project_name = tolower(basename(rstudioapi::getActiveProject()))
+#
+#   data_rocker_table <- ContainR::data_rocker_table
+#
+#   # Set tag
+#   if(is.null(tag)){
+#     tag <- "latest"
+#   } else {
+#     tag <- tolower(tag)
+#   }
+#
+#   image <- check_images(image = image, tag = tag)
+#
+#   processed_args <- rocker_args(DISABLE_AUTH, use_local, image)
+#
+#   docker_run(proc_args = processed_args, name = project_name)
+#
+#   # dockered <- processx::process$new(command = "docker",
+#   #                                   args = proc_args,
+#   #                                   pty = TRUE) # currently only supported on Unix systems
+#   if(isTRUE(dockered$is_alive())){
+#     cli::cli_h1("Running: {.val {image}} as container: {.val {project_name}}")
+#     cli::cli_alert_info("Launching {.path {image}} in you browser...")
+#     #utils::browseURL("http://localhost:8787")
+#   }
+#
+# }
 
 # TODO set a healthcheck on the container to check its running
 
+
+
+ docker$new(process = "docker", command = "blah", options = "ls")
+  docker$new(process = "docker", command = "image", options = "nope")
+  docker$new(process = "docker", command = "image", options = "ls")
+cont <- docker$new(process = "docker", command = "image", options = "ls")
+cont
+print(cont)
+
+cont_obj <- containr$new(image = "testing", name = "ContainR", DISABLE_AUTH = TRUE,
+  use_local = FALSE)
+
+cont_obj
+cont_obj$docker_check() # public is good
+cont_obj$status()
+cont_obj$info()
+
+cont_obj$stop()
+cont_obj$start()
+cont_obj$info()
+cont_obj$stop()
+cont_obj$launch_browser()
+
+
+
+# get pid
+# docker inspect --format '{{.State.Pid}}' container
+
+containr_name <- processx::run(command = "docker",
+  args = c("inspect",
+    "--format",
+    "'{{.Name}}'",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+containr_pid <- processx::run(command = "docker",
+  args = c("inspect",
+    "--format",
+    "'{{.State.Pid}}'",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+containr_image <- processx::run(command = "docker",
+  args = c("inspect",
+    "--format",
+    "'{{.Config.Image}}'",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+
+
+# additional outputs
+processx::run(command = "docker",
+  args = c("inspect",
+    "--format",
+    "'{{.State.Running}}'",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+containr_ports <- processx::run(command = "docker",
+  args = c("inspect",
+    "--format",
+    "'{{.Config.ExposedPorts}}'",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+
+
+
+json <- processx::run(command = "docker",
+  args = c("inspect",
+    "--format",
+    "'{{json .Mounts}}'",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+
+cat(paste("<", cli::style_bold("Process:"), ps::ps_name(proc),
+  "|", cli::style_bold("ID:"), "docker_id",
+  "|", cli::style_bold("Port:"), "port",
+  "|", cli::style_bold("Docker Port:"), "docker_port",
+  "|", cli::style_bold("Pid:"), ps::ps_pid(proc),
+  "|", cli::style_bold("Status:"), cli::col_green("status"), # ifelse red then green
+  "|", cli::style_bold("Image:"), "image",
+  ">"))
+
+logged <- processx::run(command = "docker",
+  args = c("logs",
+    "--tail=5",
+    "ContainR"),
+  error_on_status = TRUE)$stdout
+
+logged[grepl("\\[services.d\\]", logged)]
 
 
 
