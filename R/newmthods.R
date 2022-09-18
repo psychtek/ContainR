@@ -16,6 +16,7 @@ docker <- R6::R6Class(
       private$commands_check(commands)
       private$options_check(options)
       private$docker_command_run(process, commands, options)
+      invisible(self)
     },
 
     print = function() {
@@ -26,6 +27,7 @@ docker <- R6::R6Class(
 
     show_output = function(){
       dplyr::as_tibble(private$output)
+
     },
 
 
@@ -118,22 +120,32 @@ cont$docker_images()
 cont$docker_containers()
 
 
+containr <- containr$new(image = "rstudio", "test")
+
+containr
+containr$docker_check()
+containr$info()
+containr$status()
+containr$start()
+containr$stop()
 
 
-docker_containers <- function(){
+docker_images <- function(){
 
   docker$new(process = "docker",
-    commands = "container",
+    commands = "image",
     options = "ls")$show_output()
   #docker$docker_return(obj_check)
 
 }
 
+docker_images()
+
 docker_search <- function(search = "rstudio"){
 
-  obj_check <- command(process = "docker",
+  docker$new(process = "docker",
     commands = "search",
-    options = search)
-  docker(obj_check)
+    options = "rstudio")$show_outout()
 
 }
+

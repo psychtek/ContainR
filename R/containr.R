@@ -170,7 +170,7 @@ containr <- R6::R6Class("containr",
 
       repo_images <- docker_images() |> dplyr::filter(Repository %in% image)
 
-      data_rocker_table <- ContainR::data_rocker_table
+      data_rocker_table <- data_rocker_table
 
       if(image %in% repo_images$Repository) {
 
@@ -246,7 +246,7 @@ containr <- R6::R6Class("containr",
 
     # Setup the docker command string
     setup_command = function(DISABLE_AUTH = TRUE, use_local = TRUE, image = NULL){
-      testing_cmd <- rocker_args(DISABLE_AUTH = TRUE, use_local = TRUE, image = "testing")
+      testing_cmd <- rocker_args(DISABLE_AUTH = TRUE, use_local = TRUE, image = "rocker/rstudio")
       return(testing_cmd)
     },
 
@@ -259,7 +259,7 @@ containr <- R6::R6Class("containr",
         supervise = TRUE,
         stdout = tempfile("containr-stdout-", fileext = ".log"),
         stderr = tempfile("containr-stderr-", fileext = ".log")
-      )
+      ) #TODO this still falgs as running when docker fails
 
       Sys.sleep(3)
       assign("process", private$process, envir = parent.frame())
