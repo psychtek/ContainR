@@ -114,13 +114,20 @@ containr <- R6::R6Class("containr",
         } else {
           cli::col_yellow("Not Started")
         },
-        "|", cli::style_bold("Image:"), gsub("[^[:alnum:] ]", "", private$containr_image),
+        "|", cli::style_bold("Image:"), ifelse(is.null(private$containr_image),
+          cli::col_yellow("Not Started"),
+          gsub("[^[:alnum:] ]", "", private$containr_image)),
         ">"))
     },
 
     launch = function(){
-      cli::cli_alert_info("Launching ContainR in your browser...")
-      utils::browseURL("http://localhost:8787")
+      if(is.null(private$containr_image)){
+        cli::cli_alert_warning("No ContainR Running. Have you tried turning it off and back on again?")
+        cli::cli_alert_info("Tip: Try running the {.fun {containr:start}}")
+      } else {
+        cli::cli_alert_info("Launching ContainR in your browser...")
+        utils::browseURL("http://localhost:8787")
+      }
     },
 
     #' @description
