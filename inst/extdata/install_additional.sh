@@ -67,13 +67,13 @@ echo -e "Check the littler info...\n"
 
 r --version
 
-echo -e "Check the R info...\n"
+#echo -e "Check the R info...\n"
 
-R -q -e "sessionInfo()"
+#R -q -e "sessionInfo()"
 
-R -q -e "reticulate::py_config()"
+#R -q -e "reticulate::py_config()"
 
-R -q -e "sessioninfo::platform_info()"
+#R -q -e "sessioninfo::platform_info()"
 
 # Clean up
 rm -rf /tmp/downloaded_packages
