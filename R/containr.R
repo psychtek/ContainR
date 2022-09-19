@@ -662,14 +662,17 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
     initialize = function(image_name = NA, rocker_image = NA, tag = NA, dockerfile = NA,
       packages = NA, include_python = FALSE, build = FALSE){
 
+      # These are initialized in order from top to bottom
       self$set_image_name(image_name)
-      self$set_rocker_image(rocker_image)
       self$set_tag(tag)
+      self$set_rocker_image(rocker_image)
       self$set_dockerfile(dockerfile)
       self$set_packages(packages)
       self$set_python(include_python)
       self$build = build
-      #private$create_directories()
+      private$create_directories()
+      private$setup_packages()
+      private$create_dockerfile()
     },
 
     set_image_name = function(image_name){
@@ -688,6 +691,7 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
       } else {
         self$tag <- tolower(tag)
       }
+      return(self$tag)
     },
 
     set_rocker_image = function(rocker_image){
@@ -751,10 +755,13 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
       cat(
         paste(
           " |",cli::col_green("Image Name:"), private$containr_image_name, "\n",
-          "|",cli::col_green("Dockfile"), private$containr_dockerfile, "\n",
-          "|",cli::col_green("Rocker Image"), private$containr_rocker_image, "\n",
-          "|",cli::col_green("Packages"), private$containr_packages, "\n",
-          "|",cli::col_green("Python"), private$containr_include_python, "\n",
+          "|", cli::col_green("Dockfile:"), private$containr_dockerfile, "\n",
+          "|", cli::col_green("Rocker Image:"), private$containr_rocker_image, "\n",
+          "|", cli::col_green("Self Image:"), self$rocker_image, "\n",
+          "|", cli::col_green("Self tag:"), self$tag, "\n",
+          "|", cli::col_green("Packages:"), private$containr_packages, "\n",
+          "|", cli::col_green("Python:"), private$containr_include_python, "\n",
+          "|", cli::col_green("Built:"), self$build, "\n",
           "\n")
       )
       invisible(self)
@@ -775,47 +782,24 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
     python_file = NULL,
     python_env = NULL,
     additional = NULL,
-    bash_file  = NULL,
+    #bash_file  = NULL,
     file = NULL,
 
     create_dockerfile = function(){
-      # dockerfile <-  private$containr_dockerfile
-      # rocker_name <-  private$containr_rocker_image
-      # include_python <-  private$containr_include_python
-      #
-      cli::cli_h1("Creating Dockerfile")
+
+      cli::cli_h1("Writing Dockerfile")
       # File overwrite warning
       if(fs::file_exists(private$containr_dockerfile)) {
         cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
       }
 
-      #create_directories()
-
       # Flag for python inclusion
-      if(isTRUE(private$containr_include_python)) {
-        cli::cli_alert_info("Install Python: {.val {private$include_python}}")
-      } else if(isFALSE(private$containr_include_python)) {
-        cli::cli_alert_info("Install Python: {.val {private$include_python}}")
-      }
-
-      #Set tag
-      # if(is.null(tag)){
-      #   tag <- "latest"
-      # } else {
-      #   tag <- tolower(tag)
+      # if(isTRUE(private$containr_include_python)) {
+      #   cli::cli_alert_info("Install Python: {.val {private$containr_include_python}}")
+      # } else if(isFALSE(private$containr_include_python)) {
+      #   cli::cli_alert_info("Install Python: {.val {private$containr_include_python}}")
       # }
-
-      # rocker_name <- match.arg(rocker_name, c("rstudio", "tidyverse", "verse", "geospatial", "binder"))
-      #
-      # rocker_image <- switch(rocker_name,
-      #   rstudio = paste0("rocker/rstudio:", tag),
-      #   tidyverse = paste0("rocker/tidyverse:", tag),
-      #   verse = paste0("rocker/verse:", tag),
-      #   geospatial = paste0("rocker/geospatial:", tag),
-      #   binder = paste0("rocker/binder:", tag))
-
-      cli::cli_alert_info("Using Default Image: {.val {private$rocker_image}}")
 
       # command layout for dockerfile
       docker_cmds <- paste(c(
@@ -857,16 +841,16 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
 
     setup_packages = function(){
       packages <- private$containr_packages
-      private$bash_file <- "docker/scripts/install_libs_local.sh"
+      bash_file <- "docker/scripts/install_libs_local.sh"
 
       if(packages %in% "none"){
-        reset_dir()
-        create_directories()
-        return(private$bash_file)
+        private$reset_dir()
+        private$create_directories()
+        #return(bash_file)
       } else if(packages %in% c("loaded", "installed")){
 
         cli::cli_h1("Setting Package Preferences")
-        create_directories()
+        private$create_directories()
         package_df <- sessioninfo::package_info(pkgs = packages)
 
         packs <- dplyr::tibble(Package = package_df$package,
@@ -955,9 +939,9 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
         ),
           collapse = "\n")
 
-        writeLines(installR_script, con = private$bash_file, sep = "")
+        writeLines(installR_script, con = bash_file, sep = "")
 
-        if(length(readLines(private$bash_file)) > 0){
+        if(length(readLines(bash_file)) > 0){
           fs::dir_tree("docker")
           cli::cli_alert_success("Package Installs file updated: {.path {bash_file}}")
         }
@@ -971,7 +955,7 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
       private$python_env = "install_pyenv.sh"
       private$additional = "install_additional.sh"
 
-      cli::cli_h2("Creating Docker Folders")
+      #cli::cli_h2("Creating Docker Folders")
 
       if(!fs::dir_exists("docker")) {
         fs::dir_create("docker")
@@ -1025,4 +1009,7 @@ dockerfile <- R6::R6Class(classname = "dockerfile",
 
   )
 )
+
+
+
 
