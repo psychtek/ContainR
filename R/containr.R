@@ -1,9 +1,24 @@
+#' R6 Class for a Rocker ContainR
+#'
+#' @description
+#' A class object of `containr` that sets up a object to launch a defined rocker
+#' containr in a browser.
+#'
+#' @details
+#' Creates a new `containr` object based on the \url{https://rocker-project.org/images/}.
+
 containr <- R6::R6Class("containr",
   cloneable = FALSE,
 
   # Public Functions --------------------------------------------------------
 
   public = list(
+
+    #' @field image Name of the image from either the [data_rocker_table] or in docker register
+    image = NULL,
+
+    #' @field name Name of the containr when launched. Defaults to the active Rstudio Project.
+    name = NULL,
 
     #' Start a ContainR
     #'
@@ -24,15 +39,8 @@ containr <- R6::R6Class("containr",
     #'
     #' @param use_local If you want to port your local Rstudio session into the containr.
     #' Defaults to `TRUE`.
-
-    image = NULL,
-    name = NULL,
-
     initialize = function(image = NA, name = NA, DISABLE_AUTH = TRUE, use_local = TRUE){
-      # if(!is.character(image)) stop("image must be character")
-      # if(!is.logical(DISABLE_AUTH)) stop("TRUE/FALSE only")
-      # if(!is.logical(use_local)) stop("TRUE/FALSE only")
-      #
+
       self$set_image(image)
       self$set_name(name)
 
@@ -41,6 +49,9 @@ containr <- R6::R6Class("containr",
 
     },
 
+    #' @description
+    #' Set or change the containr image name. Also checks the docker register for existing images.
+    #' @param name
     set_image = function(image){
       if(is.null(image)){
         self$image <- "rstudio"
@@ -51,6 +62,9 @@ containr <- R6::R6Class("containr",
       return(private$proj_image)
     },
 
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param name Change containr name
     set_name = function(name){
       if(is.null(name)){
         self$name <- basename(rstudioapi::getActiveProject())
@@ -61,8 +75,6 @@ containr <- R6::R6Class("containr",
       return(private$proj_name)
     },
 
-    #' Check docker
-    #'
     #' @description
     #' Performs a quick system check for installation
     #' of Docker and if not found, gives URL to page for install instructions.
@@ -86,22 +98,40 @@ containr <- R6::R6Class("containr",
       }
     },
 
-    # Start containr object
+    #' @description
+    #' Start the predefined containr. If none are defined then it will default to
+    #' the `rstudio` image and port local settings.
     start = function(){
       private$containr_start()
     },
 
-    # Stop containr object
+    #' @description
+    #' Stop containr object
     stop = function(){
       private$containr_stop()
     },
 
-    # Get the status of the containr
+    #' @description
+    #' Get the status of the containr
     status = function(){
       status = private$containr_status()
       return(status)
     },
 
+    #' @description
+    #' Opens the active containr in a browser.
+    launch = function(){
+      if(is.null(private$containr_image)){
+        cli::cli_alert_warning("No ContainR Running. Have you tried turning it off and back on again?")
+        cli::cli_alert_info("Tip: Try running the {.fun {containr:start}}")
+      } else {
+        cli::cli_alert_info("Launching ContainR in your browser...")
+        utils::browseURL("http://localhost:8787")
+      }
+    },
+
+    #' @description
+    #' Displays the process information of the active containr
     info = function(){
       cat(paste("<", cli::style_bold("Process:"), "docker",
         "|", cli::style_bold("ID:"), gsub("[^[:alnum:] ]", "", private$containr_name),
@@ -118,16 +148,6 @@ containr <- R6::R6Class("containr",
           cli::col_yellow("Not Started"),
           gsub("[^[:alnum:] ]", "", private$containr_image)),
         ">"))
-    },
-
-    launch = function(){
-      if(is.null(private$containr_image)){
-        cli::cli_alert_warning("No ContainR Running. Have you tried turning it off and back on again?")
-        cli::cli_alert_info("Tip: Try running the {.fun {containr:start}}")
-      } else {
-        cli::cli_alert_info("Launching ContainR in your browser...")
-        utils::browseURL("http://localhost:8787")
-      }
     },
 
     #' @description
