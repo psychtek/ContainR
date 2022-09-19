@@ -1,7 +1,7 @@
 containr <- R6::R6Class("containr",
   cloneable = FALSE,
 
-# Public Functions --------------------------------------------------------
+  # Public Functions --------------------------------------------------------
 
   public = list(
 
@@ -25,21 +25,40 @@ containr <- R6::R6Class("containr",
     #' @param use_local If you want to port your local Rstudio session into the containr.
     #' Defaults to `TRUE`.
 
+    image = NULL,
     name = NULL,
 
-    initialize = function(image = NULL, name = NULL, DISABLE_AUTH = TRUE,
-      use_local = TRUE){
-      if(!is.character(image)) stop("image must be character")
-      if(!is.character(name)) stop("name must be character")
-      if(!is.logical(DISABLE_AUTH)) stop("TRUE/FALSE only")
-      if(!is.logical(use_local)) stop("TRUE/FALSE only")
+    initialize = function(image = NA, name = NA, DISABLE_AUTH = TRUE, use_local = TRUE){
+      # if(!is.character(image)) stop("image must be character")
+      # if(!is.logical(DISABLE_AUTH)) stop("TRUE/FALSE only")
+      # if(!is.logical(use_local)) stop("TRUE/FALSE only")
+      #
+      self$set_image(image)
+      self$set_name(name)
 
-      self$name <- name
+      private$DISABLE_AUTH = DISABLE_AUTH
+      private$use_local = use_local
 
-      private$DISABLE_AUTH <- DISABLE_AUTH
-      private$use_local <- use_local
-      private$check_image(image)
+    },
 
+    set_image = function(image){
+      if(is.null(image)){
+        self$image <- "rstudio"
+      } else {
+        self$image <- image
+      }
+      private$proj_image <- private$check_image(self$image)
+      return(private$proj_image)
+    },
+
+    set_name = function(name){
+      if(is.null(name)){
+        self$name <- basename(rstudioapi::getActiveProject())
+      } else {
+        self$name <- name
+      }
+      private$proj_name <- self$name
+      return(private$proj_name)
     },
 
     #' Check docker
@@ -116,8 +135,8 @@ containr <- R6::R6Class("containr",
         } else {
           cli::col_yellow("Not Started")
         }, "\n",
-        "|", cli::style_bold("Image:"), private$image, "\n",
-        "|", cli::style_bold("Project:"), self$name, "\n",
+        "|", cli::style_bold("Image:"), private$proj_image, "\n",
+        "|", cli::style_bold("Project:"), private$proj_name, "\n",
         "|", cli::style_bold("Auth:"),
         if(isTRUE(private$DISABLE_AUTH)) {
           cli::col_blue(private$DISABLE_AUTH)
@@ -136,12 +155,13 @@ containr <- R6::R6Class("containr",
     }
   ),
 
-# Private Functions -------------------------------------------------------
+  # Private Functions -------------------------------------------------------
 
 
   private = list(
 
-    image = NULL,
+    proj_name = NULL,
+    proj_image = NULL,
     DISABLE_AUTH = TRUE,
     use_local = TRUE,
     connected = FALSE,
@@ -149,8 +169,6 @@ containr <- R6::R6Class("containr",
     containr_pid = NULL,
     containr_name = NULL,
     containr_image = NULL,
-    # status = NULL,
-    # proc_name = NULL,
 
     setup_config = function(){
       rprofile <-  paste0(tempdir(), "/.Rprofile")
@@ -158,8 +176,9 @@ containr <- R6::R6Class("containr",
     },
 
     # Image check in register or rocker values
-    check_image = function(image){
+    check_image = function(proj_image){
 
+      proj_image <- proj_image
       # Tag set internal for now
       tag = NULL
       if(is.null(tag)){
@@ -168,17 +187,17 @@ containr <- R6::R6Class("containr",
         tag <- tag
       }
 
-      repo_images <- docker_images() |> dplyr::filter(Repository %in% image)
+      repo_images <- docker_images() |> dplyr::filter(Repository %in% proj_image)
 
       data_rocker_table <- data_rocker_table
 
-      if(image %in% repo_images$Repository) {
+      if(proj_image %in% repo_images$Repository) {
 
-        private$image <- image
+        private$proj_image <- proj_image
 
-      } else if(image %in% data_rocker_table$name) {
+      } else if(proj_image %in% data_rocker_table$name) {
         # Switch for changing rocker image based on image name
-        private$image <- switch(image,
+        private$proj_image <- switch(proj_image,
           rstudio = paste0("rocker/rstudio:", tag),
           tidyerse = paste0("rocker/tidyverse:", tag),
           verse = paste0("rocker/verse:", tag),
@@ -187,7 +206,7 @@ containr <- R6::R6Class("containr",
       } else {
         cli::cli_abort("{.var {image}} not a Rocker image or in Docker Register. Run {.fun docker_build}")
       }
-      return(private$image)
+      return(private$proj_image)
     },
 
     # Setup the docker files and folders
@@ -245,9 +264,42 @@ containr <- R6::R6Class("containr",
     },
 
     # Setup the docker command string
-    setup_command = function(DISABLE_AUTH = TRUE, use_local = TRUE, image = NULL){
-      testing_cmd <- rocker_args(DISABLE_AUTH = TRUE, use_local = TRUE, image = "rocker/rstudio")
-      return(testing_cmd)
+    setup_command = function(proj_image = NULL, proj_name = NULL, DISABLE_AUTH = NULL, use_local = NULL){
+
+      proj_image <- private$proj_image
+      proj_name <- private$proj_name
+      # set volume mounts
+      r_dir <- paste0(fs::path_wd(), ":/home/rstudio/", basename(fs::path_wd()))
+      r_config <- paste0(fs::path_home_r(), "/.config/rstudio")
+      r_env <- paste0(fs::path_home_r(), "/.Renviron")
+      r_prof <- create_config_file(project_name = proj_name)
+
+      r_config <- paste0(r_config, ":/home/rstudio/.config/rstudio", collapse = "")
+      r_env <- paste0(r_env, ":/home/rstudio/.Renviron", collapse = "")
+      r_prof <- paste0(r_prof, ":/home/rstudio/.Rprofile", collapse = "")
+
+      if(isTRUE({{private$use_local}})){
+        vols <- c(r_dir, r_config, r_env, r_prof)
+        volumes <- unlist(purrr::map(vols, function(x) c("-v", x)))
+      } else {
+        volumes <- c("-v", paste0(r_dir))
+      }
+
+      # set ports
+      ports <- c("-p", "127.0.0.1:8787:8787")
+
+      # set options
+      # removed -it dur to "the input device is not a TTY"
+      # more here: https://stackoverflow.com/questions/43099116/error-the-input-device-is-not-a-tty
+      docker_opts <- c("run", "--rm")
+      set_env <- c("-e", paste0("DISABLE_AUTH=", ifelse(isTRUE({{private$DISABLE_AUTH}}), {{private$DISABLE_AUTH}}, "FALSE")))
+      set_name <- c("--name", proj_name)
+      image_name <- c(proj_image)
+
+      # Argument string for docker
+      proc_args <- c(docker_opts, set_env, ports, volumes, set_name, image_name)
+
+      return(proc_args)
     },
 
     containr_start = function(){
@@ -262,7 +314,6 @@ containr <- R6::R6Class("containr",
       ) #TODO this still falgs as running when docker fails
 
       Sys.sleep(3)
-      assign("process", private$process, envir = parent.frame())
 
       if(private$process$is_alive()) {
         # private$process$get_error_file()
@@ -272,6 +323,7 @@ containr <- R6::R6Class("containr",
         # private$process$get_name()
         # Reset State
         private$connected <- TRUE
+        assign("process", private$process, envir = parent.frame())
         private$get_containr_data()
       }
     },
