@@ -1,13 +1,26 @@
-
-
 # R6 Class for Docker -----------------------------------------------------
 
 docker <- R6::R6Class(
   classname = "docker",
   cloneable = FALSE,
 
+  # Public List -------------------------------------------------------------
+
+
   public = list(
 
+    #' Docker System Wrapper WPI
+    #'
+    #' @description
+    #' Work in progress: Eventually will be part of the containr class.
+    #'
+    #' @param process The system process. Plan is to add `podman` support but currently only
+    #' is setup for `docker`.
+    #'
+    #' @param commands The main docker commands. Currently support commands
+    #' are `images`, `container` and `search`.
+    #'
+    #' @param options the `command` option arguments.
     initialize = function(process = NA, commands = NA, options = NA) {
 
       if (!is.character(process)) stop("process must be character")
@@ -26,20 +39,26 @@ docker <- R6::R6Class(
       cat(paste("|", cli::style_bold("Command:"),
         paste(private$process, private$commands, private$options, collapse = " ")), "\n"
       )
+      invisible(self)
     },
 
+    #' @description
+    #' Displays returned output in `tibble` format.
     show_output = function(){
       dplyr::as_tibble(private$output)
     },
 
+    #' @description
+    #' Displays a `tibble` of local images.
+    docker_images = function(){
+      private$docker_command_run(
+        process = "docker",
+        commands = "images",
+        options = "ls")$self$show_output()
+    },
 
-    # docker_images = function(){
-    #   private$docker_command_run(
-    #     process = "docker",
-    #     commands = "images",
-    #     options = "ls")
-    # },
-    #
+    #' @description
+    #' Displays a `tibble` of running containers.
     docker_containers = function(){
       private$docker_command_run(
         process = "docker",
@@ -47,29 +66,10 @@ docker <- R6::R6Class(
         options = "lst")$self$show_output()
     }
 
-    # docker_search = function(){
-    #   private$docker_command_run(
-    #     process = "docker",
-    #     commands = "search",
-    #     options = "rstudio")
-    # },
-
-    # docker_images = function(){
-    #   #image options
-    #   columns <- c("Repository", "Tag", "Digest", "ID", "CreatedSince", "Size")
-    #   format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
-    #   stdout <- processx::run(command = self$process,
-    #     args = c(self$commands, self$options, paste0("--format=", format)),
-    #     echo = FALSE)$stdout
-    #
-    #   df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
-    #   colnames(df) <- columns
-    #   cont_list <- dplyr::as_tibble(df)
-    #   return(cont_list)
-    # },
-
-
   ),
+
+  # Private List ------------------------------------------------------------
+
 
   private = list(
 
@@ -85,10 +85,15 @@ docker <- R6::R6Class(
         args = c(private$commands, private$options, paste("--format=", format)),
         echo = FALSE)$stdout
 
-      df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
-      colnames(df) <- private$columns
-      private$output <- df
-      return(private$output)
+      if (stdout != "") {
+        df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+        colnames(df) <- private$columns
+        private$output <- df
+        return(private$output)
+      } else {
+        purrr::map(private$columns, ~ character(0)) |>
+          purrr::set_names(private$columns)
+      }
     },
 
     process_check = function(process){
@@ -97,7 +102,7 @@ docker <- R6::R6Class(
     },
 
     commands_check = function(commands){
-      private$commands <- match.arg(commands, c("image", "container", "search"))
+      private$commands <- match.arg(commands, c("image", "container", "search", "build", "history"))
     },
 
     options_check = function(options){
@@ -110,237 +115,216 @@ docker <- R6::R6Class(
         private$options <- match.arg(options, c("attach", "start", "inspect", "stop", "ls", "kill"))
         private$columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
       }
+
+      if(private$commands %in% "search"){
+        private$columns <- c("Name", "Description", "StarCount", "IsOfficial", "IsAutomated")
+      }
       return(private$options)
     }
   )
 )
 
-# Constructors ------------------------------------------------------------
-command <- function(process, commands, options, ...){
 
-  if (!is.character(process)) stop("X must be character")
-  if (!is.character(commands)) stop("X must be character")
-  if (!is.character(options)) stop("X must be character")
-  # TODO set missing() for options check
+# Docker functions  -----------------------------------------------------
 
-  # cmd must be a command type of docker or podman
-  proc <- match.arg(process, c("docker", "podman"))
-  comm <- match.arg(commands, c("run", "image", "container",
-                                "search", "build", "stop"))
-  opts <- options
-
-  value <- list(process = proc,
-                commands = comm,
-                options = opts)
-
-  structure(.Data = value,
-            class = c("command"))
-
-}
-
-# containr <- function(image = NULL, name = NULL, DISABLE_AUTH = TRUE, use_local = TRUE, ...){
-#
-#   # Check and Set image
-#   if(!is.character(image)) stop("image must be character")
-#   image <- check_images(image = image)
-#   image_id <- docker_images() |> dplyr::filter(Repository %in% image) |> purrr::pluck("ID")
-#
-#   # Check and Set name
-#   if(!is.null(name) && !is.character(name)) stop("name must be character")
-#
-#   if(is.null(name)) {
-#     name <- basename(rstudioapi::getActiveProject())
-#   } else {
-#     name <- name
-#   }
-#
-#   # Check and Set logical
-#   if(!is.logical(DISABLE_AUTH)) stop("AUTH must be TRUE or FALSE")
-#   if(!is.logical(use_local)) stop("AUTH must be TRUE or FALSE")
-#
-#
-#   commands <- rocker_args(DISABLE_AUTH = TRUE, use_local = TRUE, image = "testing")
-#
-#   value <- list(process = "docker", # set to docker only for now
-#                 commands = commands,
-#                 image = image,
-#                 name = name,
-#                 AUTH = DISABLE_AUTH,
-#                 local = use_local)
-#
-#   structure(.Data = value,
-#             .ID = "",
-#             class = c("containr"))
-# }
-
-# Methods -----------------------------------------------------------------
-
-docker <- function(x) {
-  UseMethod("docker")
-}
-
-docker.command <- function(x, ...) {
-
-  # TODO update to use switch()
-  if(x$commands == "image"){
-    #image options
-    columns <- c("Repository", "Tag", "Digest", "ID", "CreatedSince", "Size")
-  }
-
-  if(x$commands == "container"){
-    #container options
-    columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
-  }
-
-  if(x$commands == "search"){
-    #search options
-    columns <- c("Name", "Description", "StarCount", "IsOfficial", "IsAutomated")
-    format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
-    stdout <- processx::run(command = x$process,
-                            args = c(x$commands, paste0("--format=", format), x$options),
-                            echo = FALSE)$stdout
-  } else {
-    format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
-    stdout <- processx::run(command = x$process,
-                            args = c(x$commands, x$options, paste0("--format=", format)),
-                            echo = FALSE)$stdout
-  }
-
-
-  if (stdout != "") {
-    df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
-    colnames(df) <- columns
-    cont_list <- dplyr::as_tibble(df)
-    return(cont_list)
-  } else {
-    purrr::map(columns, ~ character(0)) |>
-      purrr::set_names(columns) |>
-      dplyr::as_tibble()
-  }
-
-
-}
-#
-# run <- function(x){
-#   UseMethod("run")
-# }
-#
-# run.default <- function(x, ...){
-#   cat("This is the run.default function\n")
-# }
-#
-# run.containr <- function(x, ...){
-#
-#   dockered <- processx::process$new(command = x$process,
-#                                     args = x$commands,
-#                                     pty = TRUE) #only supported on Unix sys
-#
-#
-#   Sys.sleep(3)
-#   columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
-#   format <- paste(paste0("{{.", columns, "}}"), collapse = "\t")
-#   stdout <- processx::run("docker", c("ps", paste0("--format=", format)), echo = FALSE)$stdout
-#
-#   df <- utils::read.delim(text = stdout,
-#                           sep = "\t",
-#                           header = FALSE,
-#                           stringsAsFactors = FALSE)
-#
-#   colnames(df) <- columns
-#   docker_info <- dplyr::as_tibble(df) |> dplyr::filter(Names == x$name)
-#
-#   name = docker_info$Names
-#   internal_port <- strsplit(docker_info$Ports,"->")[[1]][1]
-#   docker_port <- strsplit(docker_info$Ports,"->")[[1]][2]
-#   docker_status <- strsplit(docker_info$Status," ")[[1]][1]
-#
-#   # get the env set object
-#   docker_id <- docker_info$ID
-#   port <- internal_port
-#   docker_port <- docker_port
-#   pid <-  dockered$get_pid()
-#   status <-  dockered$get_status()
-#   image <- docker_info$Image
-#
-#   cat(paste("<", cli::style_bold("Process:"), x$process,
-#             "|", cli::style_bold("ID:"), docker_id,
-#             "|", cli::style_bold("Port:"), port,
-#             "|", cli::style_bold("Docker Port:"), docker_port,
-#             "|", cli::style_bold("Pid:"), pid,
-#             "|", cli::style_bold("Status:"), cli::col_green(status), # ifelse red then green
-#             "|", cli::style_bold("Image:"), image,
-#             ">"))
-#
-# }
-#
-
-# Print Methods -----------------------------------------------------------
-
-print.command <- function(x){
-  cat(paste(cli::style_italic(x$process),
-            cli::style_italic(x$commands),
-            cli::style_italic(x$options),
-            collapse = " "))
-}
-
-# print.containr <- function(x){
-#   cat(paste(" |", cli::style_bold("Process:"),
-#             if(length(Sys.which("docker")) > 0) {
-#               cli::col_green(x$process)
-#             } else {
-#               cli::col_red(x$process, " Not Running")
-#             }, "\n",
-#             "|", cli::style_bold("Image:"), x$image, "\n",
-#             "|", cli::style_bold("Project:"), x$name, "\n",
-#             "|", cli::style_bold("Auth:"),
-#             if(isTRUE(x$AUTH)) {
-#               cli::col_blue(x$AUTH)
-#             } else {
-#               cli::col_yellow(x$AUTH)
-#             }, "\n",
-#             "|", cli::style_bold("Local:"),
-#             if(isTRUE(x$local)) {
-#               cli::col_blue(x$local)
-#             } else {
-#               cli::col_yellow(x$local)
-#             }, "\n"),
-#       c("|", cli::style_bold("Commands:"), cli::style_italic(x$commands)))
-# }
-#
-# print.run <- function(x, ...){
-# message("this is the print.run ")
-# }
-
-
-# Containr functions  -----------------------------------------------------
-
+#' Docker Images
+#' @export
 docker_images <- function(){
 
-  obj_check <- command(process = "docker",
-                       commands = "image",
-                       options = "list")
-  docker(obj_check)
+  docker$new(process = "docker",
+    commands = "image",
+    options = "ls")$show_output()
 
 }
 
+#' Docker Containers
+#'
+#' @export
 docker_containers <- function(){
 
-  obj_check <- command(process = "docker",
-                       commands = "container",
-                       options = "list")
-  docker(obj_check)
+  docker$new(process = "docker",
+    commands = "container",
+    options = "ls")$show_output()
 
 }
 
+#' Docker Search
+#'
+#' @param search A character string of image to search on DockerHub. Returns it in `tibble`
+#' format.
+#'
+#' @export
 docker_search <- function(search = "rstudio"){
+  docker$new(process = "docker",
+    commands = "search",
+    options = search)$show_output()
+}
 
-  obj_check <- command(process = "docker",
-                       commands = "search",
-                       options = search)
-  docker(obj_check)
+
+
+#' Check Docker Services
+#'
+#' Performs a quick system check for installation
+#' of Docker and if not found, gives URL to page for install instructions.
+#'
+#'
+#' @export
+docker_check <- function(){
+
+  if(Sys.which("docker") == "") {
+
+    cli::cli_alert_warning("Docker was not found on your system")
+
+    if(Sys.info()[["sysname"]] == "Darwin"){
+      cli::cli_alert_info("Visit: {.url https://docs.docker.com/desktop/install/mac-install/}")
+    }
+
+    if(Sys.info()[["sysname"]] == "Windows"){
+      cli::cli_alert_info("Visit: {.url https://docs.docker.com/desktop/install/windows-install/}")
+    }
+
+    if(Sys.info()[["sysname"]] == "Linux"){
+      cli::cli_alert_info("Visit: {.url https://docs.docker.com/engine/install/}")
+    }
+
+  } else {
+    sys_cmd <- processx::run(command = "docker",
+      args = c("-v"),
+      error_on_status = FALSE)
+
+    cli::cli_alert_success('{gsub("[\r\n]", "", sys_cmd$stdout)}')
+
+  }
 
 }
 
+
+
+
+#' Docker Login
+#'
+#' Log into docker hub using a `DOCKER_PAT` that should be setup
+#' through \url{https://hub.docker.com} and assigned to `.Renviron`.
+#'
+#' @param username Character string of dockerhub user login
+#'
+#' @export
+docker_login <- function(username){
+
+  cli::cli_h1("Docker Login")
+  #TODO this needs to be update for secure login
+  # also to return state to check if already logged in processx::new
+  url_helper = "https://hub.docker.com/settings/general"
+
+  # Set username
+  if(is.null(username)){
+    cli::cli_abort("No {.emph username} provided")
+  } else {
+    USER = username
+  }
+
+  # set docker hub token
+  if(Sys.getenv("DOCKER_PAT") == "") {
+    cli::cli_abort("No DOCKER_PAT token can be found in {.emph .Renviron}
+                         Visit: {.url {url_helper}}")
+  } else {
+    PWD <- Sys.getenv("DOCKER_PAT")
+  }
+
+  exec_cmd <- paste0("echo ",
+    PWD,
+    " | docker login -u ",
+    USER,
+    " --password-stdin")
+  #
+  # p <- processx::process$new(
+  #   "docker",
+  #   c("login", "-u", "gaborcsardi", "--password-stdin"),
+  #   stdin = "|", stdout = "|", stderr = "|")
+
+  system(exec_cmd, intern = TRUE)
+
+}
+
+#' Docker Logout
+#'
+#' Log out of docker
+#'
+#' @export
+docker_logout <- function(){
+
+  cli::cli_h1("Docker Logout")
+
+  sys_cmd <- sys::exec_internal("docker", "logout")
+  sys_to_console(sys_cmd)
+
+}
+
+
+#' Docker Push Image
+#'
+#' Push container image to \url{https://hub.docker.com/}. Naming Convention in Docker Hub:
+#' Very popularly known software are given their own name as Docker image. For individuals and
+#' corporates, docker gives a username. And all the images can be pushed to a particular username.
+#' And can be pulled using the image name with a username.
+#'
+#'
+#' @param name The user/name of the docker image
+#' @param tag Version or tag of image. Defaults to latest.
+#'
+#' @export
+docker_push <- function(name = NULL, tag = NULL){
+
+  cli::cli_h1("Docker Push {.val {name}}:{.val {tag}}")
+  #docker_login()
+
+  if(is.null(tag)){
+    tag <- "latest"
+  } else {
+    tag <- tag
+  }
+
+  #sys_cmd <- paste0("docker push ", name, ":", tag)
+
+  cli::cli_alert_info("{.emph Have you ever heard the tragedy of Darth Plagueis, the wise?}",
+    class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
+
+  #system(sys_cmd)
+  #cli::cli_alert_success("Done")
+
+}
+
+#' Pull Rocker Images
+#'
+#' @param name Rocker image name from the [data_rocker_table]
+#' @param tag Version tag of rocker image. Will default to `latest`
+#'
+#' @export
+rocker_pull <- function(name, tag = NULL){
+
+  # Check for image name
+  data_rocker_table <- ContainR::data_rocker_table
+  if(!(name %in% data_rocker_table$name)){
+    cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
+    print(data_rocker_table)
+  }
+
+  # Set tag
+  if(is.null(tag)){
+    tag <- "latest"
+  } else {
+    tag <- tag
+  }
+
+  exec_sys_cmd <- switch(name,
+    rstudio = paste0("docker pull rocker/rstudio:", tag),
+    tidyerse = paste0("docker pull rocker/tidyverse:", tag),
+    verse = paste0("docker pull rocker/verse:", tag),
+    geospatial = paste0("docker pull rocker/geospatial:", tag),
+    binder = paste0("docker pull rocker/binder:", tag))
+
+  system(exec_sys_cmd)
+}
 
 
 

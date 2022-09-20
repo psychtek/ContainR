@@ -20,6 +20,7 @@ containr <- R6::R6Class("containr",
     #' @field name Name of the containr when launched. Defaults to the active Rstudio Project.
     name = NULL,
 
+    #' @field tag Tag of image defaults to `latest` if nothing set.
     tag = NULL,
 
     #' Start a ContainR
@@ -43,12 +44,11 @@ containr <- R6::R6Class("containr",
     #' Defaults to `TRUE`.
     initialize = function(image = NULL, name = NULL, tag = NULL, DISABLE_AUTH = TRUE, use_local = TRUE){
 
-      self$set_image(image)
+      self$set_login(DISABLE_AUTH)
+      self$set_local(use_local)
       self$set_name(name)
       self$set_tag(tag)
-
-      private$DISABLE_AUTH = DISABLE_AUTH
-      private$use_local = use_local
+      self$set_image(image)
 
     },
 
@@ -56,21 +56,18 @@ containr <- R6::R6Class("containr",
     #' Set or change the containr image name. Also checks the docker register for existing images.
     #' @param name
     set_image = function(image){
-      if(is.null(image)){
-        self$image <- "rstudio"
-      } else if(image %in% data_rocker_table$name) {
-        # Switch for changing rocker image based on image name
+      if(image %in% data_rocker_table$name) {
         self$image <- switch(image,
           rstudio = paste0("rocker/rstudio:", self$tag),
-          tidyerse = paste0("rocker/tidyverse:", self$tag),
+          tidyverse = paste0("rocker/tidyverse:", self$tag),
           verse = paste0("rocker/verse:", self$tag),
           geospatial = paste0("rocker/geospatial:", self$tag),
           binder = paste0("rocker/binder:", self$tag))
       } else {
-        private$containr_image <- self$image
-        return(private$containr_image)
+        self$image <- image
       }
-
+      private$containr_image <- self$image
+      return(private$containr_image)
     },
 
     #' @description
@@ -86,8 +83,11 @@ containr <- R6::R6Class("containr",
       return(private$containr_name)
     },
 
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param tag Change tag name. Defaults to `latest`
     set_tag = function(tag){
-      if(is.null(tag)){
+      if(isTRUE(is.null(tag))){
         self$tag <- "latest"
       } else {
         self$tag <- tolower(tag)
@@ -96,8 +96,22 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Start the predefined containr. If none are defined then it will default to
-    #' the `rstudio` image and port local settings.
+    #' Rstudio login
+    #' @param DISABLE_AUTH Set to enable the Rstudio Login. Set to `TRUE` until secure
+    #' env is setup.
+    set_login = function(DISABLE_AUTH){
+      private$DISABLE_AUTH <-  DISABLE_AUTH
+    },
+
+    #' @description
+    #' Port local config and theme settings
+    #' @param use_local Flag `TRUE` to port local settings or `FALSE` for a clean session.
+    set_local = function(use_local){
+      private$use_local <-  use_local
+    },
+
+    #' @description
+    #' Start the predefined containr as set by the `image` argument.
     start = function(){
       private$containr_start()
     },
@@ -129,8 +143,8 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' Displays the process information of the active containr
-    info = function(){
-      cli::cli_h1("ContainR Settings")
+    proc = function(){
+      cli::cli_h1("Process")
       cat(paste("<", cli::style_bold("Process:"), "docker",
         "|", cli::style_bold("ID:"), gsub("[^[:alnum:] ]", "", private$containr_name),
         "|", cli::style_bold("Pid:"), gsub("[^[:alnum:] ]", "", private$containr_pid),
@@ -142,17 +156,17 @@ containr <- R6::R6Class("containr",
         } else {
           cli::col_yellow("Not Started")
         },
-        "|", cli::style_bold("Image:"), ifelse(is.null(private$containr_image),
+        "|", cli::style_bold("Image:"), ifelse(is.null(private$containr_image_run_mode),
           cli::col_yellow("Not Started"),
-          gsub("[^[:alnum:] ]", "", private$containr_image)),
+          cli::col_green(gsub("[^[:alnum:] ]", "", private$containr_image_run_mode))),
         ">"))
     },
 
     #' @description
-    #' `print(containr)` or `containr$print()` shows some information about the
+    #' `info(containr)` or `containr$info()` shows some information about the
     #' process on the screen, whether it is running and it's process id, etc.
-    proc = function(){
-      cli::cli_h1("Docker Process")
+    info = function(){
+      cli::cli_h1("ContainR")
       cat(paste(" |", cli::style_bold("Status:"),
         if(isTRUE(self$status() == "Running")) {
           cli::col_green("Running")
@@ -161,7 +175,7 @@ containr <- R6::R6Class("containr",
         } else {
           cli::col_yellow("Not Started")
         }, "\n",
-        "|", cli::style_bold("Image:"), private$containr_image, ":", self$tag, "\n",
+        "|", cli::style_bold("Image:"), private$containr_image, "\n",
         "|", cli::style_bold("Project:"), private$containr_name, "\n",
         "|", cli::style_bold("Auth:"),
         if(isTRUE(private$DISABLE_AUTH)) {
@@ -196,6 +210,7 @@ containr <- R6::R6Class("containr",
     containr_name = NULL,
     containr_image = NULL,
     containr_config = NULL,
+    containr_image_run_mode = NULL,
 
     setup_config = function(){
       proj_name <- private$containr_name
@@ -213,7 +228,7 @@ containr <- R6::R6Class("containr",
     #   } else {
     #     tag <- tag
     #   }
-    #
+    # super$docker_images()
     #   repo_images <- docker_images() |> dplyr::filter(Repository %in% proj_image)
     #
     #   data_rocker_table <- data_rocker_table
@@ -285,7 +300,7 @@ containr <- R6::R6Class("containr",
         supervise = TRUE,
         stdout = tempfile("containr-stdout-", fileext = ".log"),
         stderr = tempfile("containr-stderr-", fileext = ".log")
-      ) #TODO this still flags as running when docker fails
+      ) # TODO this still flags as running when docker fails
 
       Sys.sleep(3)
 
@@ -305,12 +320,15 @@ containr <- R6::R6Class("containr",
     containr_stop = function(){
       if(isFALSE(private$connected)) cli::cli_abort("Nothing to stop")
       stopifnot(inherits(private$process, "process"))
+
       processx::run(command = "docker",
         args = c("stop",
-          "ContainR"),
+          private$containr_name),
         error_on_status = TRUE,
         echo = FALSE)
+
       Sys.sleep(0.5)
+
       on.exit({
         try(private$process$kill(),
           silent = TRUE)
@@ -319,8 +337,9 @@ containr <- R6::R6Class("containr",
       # Reset State
       private$connected <- FALSE
       private$containr_pid <- NULL
-      private$containr_name <- NULL
-      private$containr_image <- NULL
+      private$containr_name <- self$name
+      private$containr_image <- self$image
+      private$containr_image_run_mode <- NULL
     },
 
     containr_status = function(){
@@ -334,59 +353,31 @@ containr <- R6::R6Class("containr",
     },
 
     get_containr_data = function(){
-      private$containr_name <- processx::run(command = "docker",
+      private$containr_image_run_mode <- processx::run(command = "docker",
         args = c("inspect",
           "--format",
           "'{{.Name}}'",
-          "ContainR"),
+          private$containr_name),
         error_on_status = TRUE)$stdout
 
       private$containr_pid <- processx::run(command = "docker",
         args = c("inspect",
           "--format",
           "'{{.State.Pid}}'",
-          "ContainR"),
+          private$containr_name),
         error_on_status = TRUE)$stdout
 
       private$containr_image <- processx::run(command = "docker",
         args = c("inspect",
           "--format",
           "'{{.Config.Image}}'",
-          "ContainR"),
+          private$containr_name),
         error_on_status = TRUE)$stdout
     }
   )
 
 )
 
-
-# Helpers -----------------------------------------------------------------
-
-# Config file that will overwrite the Rstudio one
-# and then when session is launch it will activate working dir
-create_config_file <- function(proj_name){
-
-  rprofile <-  paste0(tempdir(), "/.Rprofile")
-
-  work_directory <- paste0("setwd(\"/home/rstudio/", proj_name, "\")")
-
-  writeLines(
-    c(".First <- function() {",
-      work_directory,
-      "setHook(\"rstudio.sessionInit\", function(newSession) {
-    if (newSession && is.null(rstudioapi::getActiveProject()))
-      rstudioapi::openProject(rstudioapi::initializeProject())
-  }, action = \"append\")
-
-  invisible(TRUE)
-
-}"),
-    con = rprofile,
-    sep = "\n")
-
-  return(rprofile)
-
-}
 
 
 # Dockerfile Class --------------------------------------------------------
@@ -399,19 +390,58 @@ dockerfile <- R6::R6Class(
 
   public = list(
 
-    image_name = NULL,
+    #' @field dockerfile Location of the dockerfile. Is set to `docker/Dockerfile/` directory.
     dockerfile = NULL,
-    rocker_image = NULL,
-    packages = NULL,
-    include_python = NULL,
-    build = NULL,
-    tag = NULL,
 
-    initialize = function(image_name = NULL, rocker_image = NA, tag = NULL, dockerfile = NA,
+    #' @field rocker_image
+    rocker_image = NULL,
+
+    #' @field packages
+    packages = NULL,
+
+    #' @field include_pythong
+    include_python = NULL,
+
+    #' @field build
+    build = NULL,
+
+    #' Docker build
+    #'
+    #' This function creates a dockerfile based off the rocker version image stacks and reads
+    #' from session information to install `loaded `, `installed` \(or `none`\) R libraries. The `install2.r` handles
+    #' additional package installs and will skip already installed packages on the rocker stack image. The final `Dockerfile`
+    #' can be used to build a container image with your development environment.
+    #' Builds a docker container from a `Dockerfile`. The function will look in the `inst/dockerfile/` directory
+    #' for an existing Dockerfile.
+    #'
+    #'
+    #' @param name Name of the saved image. If no name is supplied then it will use the active Rstudio project name `rstudioapi::getActiveProject()`.
+    #'
+    #' @param rocker_image The base Rocker image: \url{https://rocker-project.org/images/} to build upon. Defau;t
+    #' is to use the `rstudio` build into `packages` based on preferences. The list of current Rockered image
+    #' stacks can be view in the data [data_rocker_table].
+    #'
+    #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
+    #'
+    #' @param dockerfile Default location is in the `docker/` folder. Build will save the final `Dockerfile`
+    #' to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
+    #' an active project into a **Rstudio** container from one of the Rocker images: \url{https://rocker-project.org/images/}.
+    #'
+    #' @param packages Provide a string of either `loaded`, `installed` or `none`. `Loaded` will included packages that are currently
+    #' loaded in your active project session. The `installed` string will included everything inside you local default R library. Already
+    #' installed packages are skipped when the [build_image] command is run. If you have a large package library it is
+    #' recommended to only install `loaded` as you develop your workflow.
+    #'
+    #' @param include_python Flag to install python using the rocker scripts \url{https://github.com/rocker-org/rocker-versioned2} which have had minor modifications. Future updates
+    #' will see this streamlined. `Pandas` and `numpy` modules are also installed if this flag is set to `TRUE`.
+    #'
+    #' @param build This is the flag set to `FALSE` for when the settings are in place for the Docker process to build. View the
+    #' current settings with the `print()` method and then `build_image(TRUE)` to start the process. This can take some time so grab a coffee.
+    initialize = function(name = NULL, rocker_image = NA, tag = NULL, dockerfile = NA,
       packages = NA, include_python = FALSE, build = FALSE){
 
       # These are initialized in order from top to bottom
-      self$set_image_name(image_name)
+      self$set_image_name(name)
       super$set_tag(tag)
       self$set_rocker_image(rocker_image)
       self$set_dockerfile(dockerfile)
@@ -420,30 +450,22 @@ dockerfile <- R6::R6Class(
       private$create_directories()
       private$setup_packages()
       private$create_dockerfile()
-      super$initialize(image = private$containr_image_name)
       self$build = build
+      super$initialize(image = private$containr_image_name, tag = self$tag)
     },
 
-    set_image_name = function(image_name){
-      if(is.null(image_name)) {
-        self$image_name <- tolower(basename(rstudioapi::getActiveProject()))
-      } else {
-        self$image_name <- tolower(image_name)
-      }
-      private$containr_image_name <- self$image_name
+
+    #' @description
+    #' Set the name of the image.
+    #' @param name Set or get the name of the image for build.
+    set_image_name = function(name){
+      private$containr_image_name <- super$set_name(name)
       return(private$containr_image_name)
     },
 
-    # set_tag = function(tag){
-    #   if(is.null(tag)){
-    #     self$tag <- "latest"
-    #   } else {
-    #     self$tag <- tolower(tag)
-    #   }
-    #   super$tag <- self$tag
-    #   return(self$tag)
-    # },
-
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param rocker_image Change containr name
     set_rocker_image = function(rocker_image){
 
       rocker_image <- match.arg(rocker_image, c("rstudio", "tidyverse", "verse", "geospatial", "binder"))
@@ -459,6 +481,9 @@ dockerfile <- R6::R6Class(
       return(private$containr_rocker_image)
     },
 
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param dockerfile Change containr name
     set_dockerfile = function(dockerfile){
       if(!is.character(dockerfile)) stop("dockerfile must be a character")
       self$dockerfile <- dockerfile
@@ -466,24 +491,34 @@ dockerfile <- R6::R6Class(
       return(private$containr_dockerfile)
     },
 
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param packages Change containr name
     set_packages = function(packages){
       self$packages <- match.arg(packages, c("loaded", "none", "installed"))
       private$containr_packages <- self$packages
       return(private$containr_packages)
     },
 
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param include_python Change containr name
     set_python = function(include_python){
       self$include_python <- include_python
       private$containr_include_python <- self$include_python
       return(private$containr_include_python)
     },
 
-    build_image = function(){
+    #' @description
+    #' Change the containr name when launched. Defaults to active Rstudio project.
+    #' @param build Change containr name
+    build_image = function(build){
 
       if(isFALSE(fs::file_exists(private$containr_dockerfile))){
         cli::cli_abort("No Dockerfile could be found")
       }
 
+      self$build <- build
       if(isTRUE(self$build)){
         processx::run(command = "docker",
           args = c("build",
@@ -499,29 +534,30 @@ dockerfile <- R6::R6Class(
 
         cli::cli_alert_success("Success!")
       }
+      self$build <- TRUE
     },
 
     print = function(){
-      cli::cli_h1("Dockerfile Settings")
+      cli::cli_h1("Dockerfile Build Settings")
       cat(
         paste(
           " |",cli::style_bold("Image Name:"), private$containr_image_name, "\n",
           "|", cli::style_bold("Dockfile:"), private$containr_dockerfile, "\n",
-          "|", cli::style_bold("Rocker Image:"), private$containr_rocker_image, "\n",
-          "|", cli::style_bold("Self Image:"), self$rocker_image, "\n",
-          "|", cli::style_bold("Self tag:"), self$tag, "\n",
+          "|", cli::style_bold("Using Image:"), private$containr_rocker_image, "\n",
+          #"|", cli::style_bold("Self Image:"), self$rocker_image, "\n",
+          #"|", cli::style_bold("Self tag:"), self$tag, "\n",
           "|", cli::style_bold("Packages:"), private$containr_packages, "\n",
           "|", cli::style_bold("Python:"), private$containr_include_python, "\n",
-          "|", cli::style_bold("Built:"), self$build, "\n",
+          "|", cli::style_bold("Built:"), ifelse(isTRUE(self$build),
+            cli::col_green(self$build),
+            cli::col_yellow(self$build)), "\n",
           "\n")
       )
       invisible(self)
     }
   ),
 
-
   # Private List ------------------------------------------------------------
-
 
   private = list(
 
@@ -544,13 +580,6 @@ dockerfile <- R6::R6Class(
         cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
           class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
       }
-
-      # Flag for python inclusion
-      # if(isTRUE(private$containr_include_python)) {
-      #   cli::cli_alert_info("Install Python: {.val {private$containr_include_python}}")
-      # } else if(isFALSE(private$containr_include_python)) {
-      #   cli::cli_alert_info("Install Python: {.val {private$containr_include_python}}")
-      # }
 
       # command layout for dockerfile
       docker_cmds <- paste(c(
@@ -760,6 +789,34 @@ dockerfile <- R6::R6Class(
 
   )
 )
+
+# Helpers -----------------------------------------------------------------
+
+# Config file that will overwrite the Rstudio one
+# and then when session is launch it will activate working dir
+create_config_file <- function(proj_name){
+
+  rprofile <-  paste0(tempdir(), "/.Rprofile")
+
+  work_directory <- paste0("setwd(\"/home/rstudio/", proj_name, "\")")
+
+  writeLines(
+    c(".First <- function() {",
+      work_directory,
+      "setHook(\"rstudio.sessionInit\", function(newSession) {
+    if (newSession && is.null(rstudioapi::getActiveProject()))
+      rstudioapi::openProject(rstudioapi::initializeProject())
+  }, action = \"append\")
+
+  invisible(TRUE)
+
+}"),
+    con = rprofile,
+    sep = "\n")
+
+  return(rprofile)
+
+}
 
 
 
