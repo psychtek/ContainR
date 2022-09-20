@@ -41,10 +41,11 @@ containr <- R6::R6Class("containr",
     #'
     #' @param use_local If you want to port your local Rstudio session into the containr.
     #' Defaults to `TRUE`.
-    initialize = function(image = NULL, name = NULL, DISABLE_AUTH = TRUE, use_local = TRUE){
+    initialize = function(image = NULL, name = NULL, tag = NULL, DISABLE_AUTH = TRUE, use_local = TRUE){
 
       self$set_image(image)
       self$set_name(name)
+      self$set_tag(tag)
 
       private$DISABLE_AUTH = DISABLE_AUTH
       private$use_local = use_local
@@ -66,8 +67,8 @@ containr <- R6::R6Class("containr",
           geospatial = paste0("rocker/geospatial:", self$tag),
           binder = paste0("rocker/binder:", self$tag))
       } else {
-        private$proj_image <- self$image
-        return(private$proj_image)
+        private$containr_image <- self$image
+        return(private$containr_image)
       }
 
     },
@@ -81,8 +82,17 @@ containr <- R6::R6Class("containr",
       } else {
         self$name <- name
       }
-      private$proj_name <- self$name
-      return(private$proj_name)
+      private$containr_name <- self$name
+      return(private$containr_name)
+    },
+
+    set_tag = function(tag){
+      if(is.null(tag)){
+        self$tag <- "latest"
+      } else {
+        self$tag <- tolower(tag)
+      }
+      return(self$tag)
     },
 
     #' @description
@@ -120,6 +130,7 @@ containr <- R6::R6Class("containr",
     #' @description
     #' Displays the process information of the active containr
     info = function(){
+      cli::cli_h1("ContainR Settings")
       cat(paste("<", cli::style_bold("Process:"), "docker",
         "|", cli::style_bold("ID:"), gsub("[^[:alnum:] ]", "", private$containr_name),
         "|", cli::style_bold("Pid:"), gsub("[^[:alnum:] ]", "", private$containr_pid),
@@ -141,6 +152,7 @@ containr <- R6::R6Class("containr",
     #' `print(containr)` or `containr$print()` shows some information about the
     #' process on the screen, whether it is running and it's process id, etc.
     proc = function(){
+      cli::cli_h1("Docker Process")
       cat(paste(" |", cli::style_bold("Status:"),
         if(isTRUE(self$status() == "Running")) {
           cli::col_green("Running")
@@ -149,8 +161,8 @@ containr <- R6::R6Class("containr",
         } else {
           cli::col_yellow("Not Started")
         }, "\n",
-        "|", cli::style_bold("Image:"), private$proj_image, "\n",
-        "|", cli::style_bold("Project:"), private$proj_name, "\n",
+        "|", cli::style_bold("Image:"), private$containr_image, ":", self$tag, "\n",
+        "|", cli::style_bold("Project:"), private$containr_name, "\n",
         "|", cli::style_bold("Auth:"),
         if(isTRUE(private$DISABLE_AUTH)) {
           cli::col_blue(private$DISABLE_AUTH)
@@ -186,7 +198,7 @@ containr <- R6::R6Class("containr",
     containr_config = NULL,
 
     setup_config = function(){
-      proj_name <- private$proj_name
+      proj_name <- private$containr_name
       private$containr_config <-  create_config_file(proj_name)
     },
 
@@ -225,10 +237,10 @@ containr <- R6::R6Class("containr",
     # },
 
     # Setup the docker command string
-    setup_command = function(proj_image = NULL, proj_name = NULL, DISABLE_AUTH = NULL, use_local = NULL){
+    setup_command = function(){
 
-      proj_image <- private$proj_image
-      proj_name <- private$proj_name
+      # proj_image <- private$containr_image
+      # proj_name <- private$containr_name
       private$setup_config()
       # set volume mounts
       r_dir <- paste0(fs::path_wd(), ":/home/rstudio/", basename(fs::path_wd()))
@@ -255,8 +267,8 @@ containr <- R6::R6Class("containr",
       # more here: https://stackoverflow.com/questions/43099116/error-the-input-device-is-not-a-tty
       docker_opts <- c("run", "--rm")
       set_env <- c("-e", paste0("DISABLE_AUTH=", ifelse(isTRUE({{private$DISABLE_AUTH}}), {{private$DISABLE_AUTH}}, "FALSE")))
-      set_name <- c("--name", proj_name)
-      image_name <- c(proj_image)
+      set_name <- c("--name", private$containr_name)
+      image_name <- c(private$containr_image)
 
       # Argument string for docker
       proc_args <- c(docker_opts, set_env, ports, volumes, set_name, image_name)
@@ -395,12 +407,12 @@ dockerfile <- R6::R6Class(
     build = NULL,
     tag = NULL,
 
-    initialize = function(image_name = NA, rocker_image = NA, tag = NULL, dockerfile = NA,
+    initialize = function(image_name = NULL, rocker_image = NA, tag = NULL, dockerfile = NA,
       packages = NA, include_python = FALSE, build = FALSE){
 
       # These are initialized in order from top to bottom
       self$set_image_name(image_name)
-      self$set_tag(tag)
+      super$set_tag(tag)
       self$set_rocker_image(rocker_image)
       self$set_dockerfile(dockerfile)
       self$set_packages(packages)
@@ -408,8 +420,8 @@ dockerfile <- R6::R6Class(
       private$create_directories()
       private$setup_packages()
       private$create_dockerfile()
-      self$build = build
       super$initialize(image = private$containr_image_name)
+      self$build = build
     },
 
     set_image_name = function(image_name){
@@ -422,15 +434,15 @@ dockerfile <- R6::R6Class(
       return(private$containr_image_name)
     },
 
-    set_tag = function(tag){
-      if(is.null(tag)){
-        self$tag <- "latest"
-      } else {
-        self$tag <- tolower(tag)
-      }
-      super$tag <- self$tag
-      return(self$tag)
-    },
+    # set_tag = function(tag){
+    #   if(is.null(tag)){
+    #     self$tag <- "latest"
+    #   } else {
+    #     self$tag <- tolower(tag)
+    #   }
+    #   super$tag <- self$tag
+    #   return(self$tag)
+    # },
 
     set_rocker_image = function(rocker_image){
 
@@ -490,16 +502,17 @@ dockerfile <- R6::R6Class(
     },
 
     print = function(){
+      cli::cli_h1("Dockerfile Settings")
       cat(
         paste(
-          " |",cli::col_green("Image Name:"), private$containr_image_name, "\n",
-          "|", cli::col_green("Dockfile:"), private$containr_dockerfile, "\n",
-          "|", cli::col_green("Rocker Image:"), private$containr_rocker_image, "\n",
-          "|", cli::col_green("Self Image:"), self$rocker_image, "\n",
-          "|", cli::col_green("Self tag:"), self$tag, "\n",
-          "|", cli::col_green("Packages:"), private$containr_packages, "\n",
-          "|", cli::col_green("Python:"), private$containr_include_python, "\n",
-          "|", cli::col_green("Built:"), self$build, "\n",
+          " |",cli::style_bold("Image Name:"), private$containr_image_name, "\n",
+          "|", cli::style_bold("Dockfile:"), private$containr_dockerfile, "\n",
+          "|", cli::style_bold("Rocker Image:"), private$containr_rocker_image, "\n",
+          "|", cli::style_bold("Self Image:"), self$rocker_image, "\n",
+          "|", cli::style_bold("Self tag:"), self$tag, "\n",
+          "|", cli::style_bold("Packages:"), private$containr_packages, "\n",
+          "|", cli::style_bold("Python:"), private$containr_include_python, "\n",
+          "|", cli::style_bold("Built:"), self$build, "\n",
           "\n")
       )
       invisible(self)
