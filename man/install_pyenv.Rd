@@ -9,6 +9,6 @@ This is a dataset containing stuff.
 \section{install_pyenv.sh}{
 
 
-This data is used in write_install_bash_file().
+This data is used in \code{dockerfile$new()}.
 }
 

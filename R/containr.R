@@ -1,12 +1,13 @@
-#' R6 Class for a Rocker ContainR
+#' R6 Class for a ContainR
 #'
 #' @description
 #' A class object of `containr` that sets up a object to launch a defined rocker
 #' containr in a browser.
 #'
-#' @details
+#' @section Rockered:
 #' Creates a new `containr` object based on the \url{https://rocker-project.org/images/}.
-
+#'
+#' @export
 containr <- R6::R6Class("containr",
   cloneable = FALSE,
 
@@ -37,6 +38,8 @@ containr <- R6::R6Class("containr",
     #' @param name The name of the containr for the docker process. If none is applied then
     #' it will default to the active Rstudio project name.
     #'
+    #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
+    #'
     #' @param DISABLE_AUTH Bypass authentication and show the R session.
     #' Defaults to TRUE and will login when the `launch()` function is invoked.
     #'
@@ -54,7 +57,7 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' Set or change the containr image name. Also checks the docker register for existing images.
-    #' @param name
+    #' @param image Set image name that was set from the `build_image()` setup with the `set_image_name`.
     set_image = function(image){
       if(image %in% data_rocker_table$name) {
         self$image <- switch(image,
@@ -422,17 +425,20 @@ dockerfile <- R6::R6Class(
     #' @field dockerfile Location of the dockerfile. Is set to `docker/Dockerfile/` directory.
     dockerfile = NULL,
 
-    #' @field rocker_image
+    #' @field rocker_image A `name` from the [data_rocker_table] to build off/
     rocker_image = NULL,
 
-    #' @field packages
+    #' @field packages Provide a string of either `loaded`, `installed` or `none`.
     packages = NULL,
 
-    #' @field include_pythong
+    #' @field include_python Flag to install python using the rocker scripts
     include_python = NULL,
 
-    #' @field build
+    #' @field build Default is `FALSE`. Set to `TRUE` with the `build_image(TRUE)` fun.
     build = NULL,
+
+    #' @field tag Create a tag for the image. Defaults to `latest`.
+    tag = NULL,
 
     #' Docker build
     #'
@@ -566,6 +572,8 @@ dockerfile <- R6::R6Class(
       self$build <- TRUE
     },
 
+    #' @description
+    #' Prints a table of the argument settings.
     print = function(){
       cli::cli_h1("Dockerfile Build Settings")
       cat(

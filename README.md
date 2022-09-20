@@ -25,7 +25,7 @@ allows the user to create a Dockerfile with choices to include attached
 CRAN packages (including Github packages), include Python (Pandas and
 Numpy) and launch the Rstudio container in a browser.
 
-When a **ContainR session** is launched, your local config settings are
+When a **ContainR session** is launched, your local config settings can
 also *cloned* into the session. R environment secrets are also available
 for access during the session. These aren’t stored permanently on the
 image however, allow the user to work freely with their custom layout
@@ -103,14 +103,6 @@ to grab the image from DockerHub.
 rocker_run(image = "rocker/rstudio", tag = "4.0.0")
 ```
 
-### ContainR Addin
-
-ContainR installs two basic functions into the `Addins` menu,
-`Run in Rocker(Rstudio)` and `Stop Rocker` which will launch the
-`rocker/rsudio:latest` container and copy your config settings and
-active rstudio project. `Stop Rocker` will stop the container
-completely.
-
 ## Workflow Basics
 
 - Open your current working Rstudio project.
@@ -165,6 +157,8 @@ be view with the `docker_images()` function.
 ``` r
 docker_build(dockerfile =  "inst/dockerfiles/Dockerfile", name = "user/imagename")
 ```
+
+<img src="inst/figures/image_building.png" align="centre"/>
 
 #### Run a Rocker Container
 

@@ -1,4 +1,4 @@
-Package: ContainR
+Package: containr
 Title: Container Builder
 Version: 0.1.5
 Authors@R: c(person(given = "Aaron", 
@@ -26,7 +26,8 @@ Imports:
     purrr, 
     stringr, 
     processx,
-    fs
+    fs,
+    R6
 Depends: 
     R (>= 3.5.0)
 LazyData: true

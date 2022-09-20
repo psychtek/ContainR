@@ -26,7 +26,7 @@ A set of functions that I found handy during the development of the [repliCATS p
 
 The goal of **ContainR** is to enable easier container development for computational reproducibility. The package ports the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) Rstudio stacks and basic [Docker](https://docs.docker.com/reference/) commands to R. Based on whatever Rstudio project is currently active, it allows the user to create a Dockerfile with choices to include attached CRAN packages (including Github packages), include Python (Pandas and Numpy) and launch the Rstudio container in a browser. 
 
-When a **ContainR session** is launched, your local config settings are also *cloned* into the session. R environment secrets are also available for access during the session. These aren't stored permanently on the image however, allow the user to work freely with their custom layout and reference any `.Renviron` settings - separating the development from the private user settings.    
+When a **ContainR session** is launched, your local config settings can also *cloned* into the session. R environment secrets are also available for access during the session. These aren't stored permanently on the image however, allow the user to work freely with their custom layout and reference any `.Renviron` settings - separating the development from the private user settings.    
 
 It is currently a work in progress and welcome any [issues and comments](https://github.com/psychtek/ContainR/issues). 
 
@@ -75,9 +75,6 @@ rocker_run(image = "rocker/rstudio", tag = "4.0.0")
 
 ```
 
-### ContainR Addin
-
-ContainR installs two basic functions into the `Addins` menu, `Run in Rocker(Rstudio)` and `Stop Rocker` which will launch the `rocker/rsudio:latest` container and copy your config settings and active rstudio project. `Stop Rocker` will stop the container completely.
 
 ## Workflow Basics
 
@@ -122,6 +119,7 @@ The `docker_build()` function will then read the newly created `Dockerfile` and 
 ```r
 docker_build(dockerfile =  "inst/dockerfiles/Dockerfile", name = "user/imagename")
 ```
+<img src="inst/figures/image_building.png" align="centre"/>
 
 #### Run a Rocker Container
 

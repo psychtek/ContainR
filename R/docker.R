@@ -1,11 +1,10 @@
-# R6 Class for Docker -----------------------------------------------------
-
+#' Docker Process Class
+#'
+#' @description Work in progress.
+#'
 docker <- R6::R6Class(
   classname = "docker",
   cloneable = FALSE,
-
-  # Public List -------------------------------------------------------------
-
 
   public = list(
 
@@ -35,6 +34,8 @@ docker <- R6::R6Class(
       private$docker_command_run(process, commands, options)
     },
 
+    #' @description
+    #' Prints the full command to the console for viewing.
     print = function() {
       cat(paste("|", cli::style_bold("Command:"),
         paste(private$process, private$commands, private$options, collapse = " ")), "\n"

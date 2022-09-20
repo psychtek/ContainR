@@ -6,7 +6,7 @@
 #'
 #' @section install_additional.sh:
 #'
-#' This data is used in write_install_bash_file().
+#' This data is used in `dockerfile$new()`.
 NULL
 
 #' Install Script
@@ -17,7 +17,7 @@ NULL
 #'
 #' @section install_pyenv.sh:
 #'
-#' This data is used in write_install_bash_file().
+#' This data is used in `dockerfile$new()`.
 NULL
 
 #' Install Script
@@ -28,5 +28,5 @@ NULL
 #'
 #' @section install_python.sh:
 #'
-#' This data is used in write_install_bash_file().
+#' This data is used in `dockerfile$new()`.
 NULL
