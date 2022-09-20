@@ -373,6 +373,35 @@ containr <- R6::R6Class("containr",
           "'{{.Config.Image}}'",
           private$containr_name),
         error_on_status = TRUE)$stdout
+
+      # additional outputs
+      # processx::run(command = "docker",
+      #   args = c("inspect",
+      #     "--format",
+      #     "'{{.State.Running}}'",
+      #     "ContainR"),
+      #   error_on_status = TRUE)$stdout
+      #
+      # processx::run(command = "docker",
+      #   args = c("inspect",
+      #     "--format",
+      #     "'{{.State.Paused}}'",
+      #     "ContainR"),
+      #   error_on_status = TRUE)$stdout
+      #
+      # processx::run(command = "docker",
+      #   args = c("inspect",
+      #     "--format",
+      #     "'{{.State.StartedAt}}'",
+      #     "ContainR"),
+      #   error_on_status = TRUE)$stdout
+      #
+      # processx::run(command = "docker",
+      #   args = c("inspect",
+      #     "--format",
+      #     "'{{.Name}}'",
+      #     "ContainR"),
+      #   error_on_status = TRUE)$stdout
     }
   )
 
