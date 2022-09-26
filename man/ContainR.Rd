@@ -2,7 +2,7 @@
 % Please edit documentation in R/containr.R
 \name{containr}
 \alias{containr}
-\title{R6 Class for a ContainR}
+\title{ContainR Class Object}
 \description{
 A class object of \code{containr} that sets up a object to launch a defined rocker
 containr in a browser.

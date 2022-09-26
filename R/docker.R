@@ -1,4 +1,5 @@
-#' Docker Process Class
+#' @include containr.R docker.R dockerfile.R
+#' @title docker Class Object
 #'
 #' @description Work in progress.
 #'
@@ -20,6 +21,8 @@ docker <- R6::R6Class(
     #' are `images`, `container` and `search`.
     #'
     #' @param options the `command` option arguments.
+    #'
+    #' @export
     initialize = function(process = NA, commands = NA, options = NA) {
 
       if (!is.character(process)) stop("process must be character")
@@ -257,7 +260,6 @@ docker_logout <- function(){
   cli::cli_h1("Docker Logout")
 
   sys_cmd <- sys::exec_internal("docker", "logout")
-  sys_to_console(sys_cmd)
 
 }
 
@@ -304,7 +306,7 @@ docker_push <- function(name = NULL, tag = NULL){
 rocker_pull <- function(name, tag = NULL){
 
   # Check for image name
-  data_rocker_table <- ContainR::data_rocker_table
+  data_rocker_table <- data_rocker_table
   if(!(name %in% data_rocker_table$name)){
     cli::cli_warn("{.arg name} must be one of: {.emph {data_rocker_table$name}}")
     print(data_rocker_table)

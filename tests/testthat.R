@@ -8,9 +8,5 @@
 
 library(testthat)
 library(ContainR)
-# library(fs)
-# library(withr)
-# library(dynutils)
-# library(usethis)
 
 test_check("ContainR")

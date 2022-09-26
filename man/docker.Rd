@@ -2,7 +2,7 @@
 % Please edit documentation in R/docker.R
 \name{docker}
 \alias{docker}
-\title{Docker Process Class}
+\title{docker Class Object}
 \description{
 Work in progress.
 
