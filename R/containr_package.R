@@ -1,9 +1,10 @@
-#' containr: Containerize you workflow
+#' containr: Containerize a R Project
 #'
 #' To learn more about \pkg{containr}, start with the vignettes: \code{browseVignettes(package = "containr")}
 #'
 #' @docType package
 #' @name containr
+#' @aliases containr
 #'
 #' @keywords internal
 "_PACKAGE"

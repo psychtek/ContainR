@@ -3,7 +3,7 @@
 \docType{package}
 \name{containr}
 \alias{containr}
-\alias{containr-package}
+\alias{_PACKAGE}
 \title{containr Class Object}
 \description{
 A class object of \code{containr} that sets up a object to launch a defined rocker
