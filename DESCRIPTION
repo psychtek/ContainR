@@ -1,5 +1,5 @@
-Package: ContainR
-Title: Container Builder
+Package: containr
+Title: containr Builder
 Version: 0.1.5
 Authors@R: c(person(given = "Aaron", 
                     family = "Willcox", 
@@ -12,25 +12,37 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
 SystemRequirements: docker
-URL: https://github.com/psychtek/containR
-BugReports: https://github.com/psychtek/containR/issues
+URL: https://github.com/psychtek/ContainR
+BugReports: https://github.com/psychtek/ContainR/issues
 Imports:
     cli,
-    rstudioapi,
-    dplyr,
-    tidyr,
     magrittr,
-    sessioninfo,
     crayon,
     sys,
-    purrr, 
-    stringr, 
-    processx,
-    fs
+    processx
 Depends: 
     R (>= 3.5.0)
 LazyData: true
 Suggests: 
     knitr,
-    rmarkdown
+    curl,
+    R6,
+    fs,
+    dplyr, 
+    purrr,
+    sessioninfo,
+    rmarkdown,
+    withr,
+    dynutils,
+    usethis,
+    testthat (>= 3.0.0)
 VignetteBuilder: knitr
+Config/testthat/edition: 3
+Collate: 
+    'dockerfile.R'
+    'docker.R'
+    'containr.R'
+    'containr_package.R'
+    'data.R'
+    'utils-pipe.R'
+    'zzz.R'

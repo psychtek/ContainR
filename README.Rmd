@@ -26,7 +26,7 @@ A set of functions that I found handy during the development of the [repliCATS p
 
 The goal of **ContainR** is to enable easier container development for computational reproducibility. The package ports the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) Rstudio stacks and basic [Docker](https://docs.docker.com/reference/) commands to R. Based on whatever Rstudio project is currently active, it allows the user to create a Dockerfile with choices to include attached CRAN packages (including Github packages), include Python (Pandas and Numpy) and launch the Rstudio container in a browser. 
 
-When a **ContainR session** is launched, your local config settings are also *cloned* into the session. R environment secrets are also available for access during the session. These aren't stored permanently on the image however, allow the user to work freely with their custom layout and reference any `.Renviron` settings - separating the development from the private user settings.    
+When a **ContainR session** is launched, your local config settings can also *cloned* into the session. R environment secrets are also available for access during the session. These aren't stored permanently on the image however, allow the user to work freely with their custom layout and reference any `.Renviron` settings - separating the development from the private user settings.    
 
 It is currently a work in progress and welcome any [issues and comments](https://github.com/psychtek/ContainR/issues). 
 
@@ -41,14 +41,10 @@ You can install the development version of `ContainR` from [GitHub](https://gith
 devtools::install_github("psychtek/ContainR")
 ```
 
-## Quick Launch
-
-> Run the `rocker_run()` function which will launch the `rocker/rstudio:latest` stack into a Docker container, port **local config** and **environment** settings into the container and activate your current activates the Rstudio project in a virtual session.
-
 Supported [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) stacks can be found by exploring the `data_rocker_table` inside the package or visiting their [repository](https://github.com/rocker-org/rocker-versioned2) to learn more. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-library(ContainR)
+library(containr)
 
 data_rocker_table
 ```
@@ -60,78 +56,79 @@ Check if Docker is installed on the system or visit install instructions for [OS
 docker_check()
 ```
 
-### Run R Project in Rocker Rstudio Container
-
-The `rocker_run()` function will launch the latest version of (`rocker/rstudio:latest`) from the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) stack. 
-
-```r
-rocker_run()
-```
-
-Alternatively, a version can be specified in the `tag` argument. To view the images and specified tags visit the [Rocker-Versioned Wiki](https://github.com/rocker-org/rocker-versioned2/wiki). If the image is not found locally (`Unable to find image 'rocker/rstudio:4.0.0' locally`) it will proceed to grab the image from DockerHub. 
-
-```r
-rocker_run(image = "rocker/rstudio", tag = "4.0.0")
-
-```
-
-### ContainR Addin
-
-ContainR installs two basic functions into the `Addins` menu, `Run in Rocker(Rstudio)` and `Stop Rocker` which will launch the `rocker/rsudio:latest` container and copy your config settings and active rstudio project. `Stop Rocker` will stop the container completely.
-
 ## Workflow Basics
 
 - Open your current working Rstudio project. 
-- Explore which base [Rocker image](https://rocker-project.org/) to use `ContainR::data_rocker_table`.
-- **Create** a Dockerfile `docker_file()`.
-- **Build** a container `docker_build()`.
-- **Run** the container (Launches browser) `rocker_run()`.
-- **Stop** the container `rocker_stop()``
+- Explore which base [Rocker image](https://rocker-project.org/) to use `containr::data_rocker_table`.
+- **Create** a Dockerfile `containr$new)`.
+- **Build** a container `build_image(TRUE)`.
+- **Run** the container (Launches browser) `start()`.
+- **Stop** the container `stop()`
 
 ### Usage
 
-The `docker_file()` function is an attempt to make it easier to create a `Dockerfile` by allowing the user to: 
-
-1) choose the appropriate Rocker base image (defaults to latest Rstudio); 
+1) choose the appropriate Rocker base image (defaults to latest `rocker/rstudio:latest`); 
 
 2) install either your local `loaded`, `installed` or `none` packages;
 
-3) specify which version (tag);
-
-4) and choose to included python (pandas and numpy). 
+4) and choose to included python. 
 
 #### Create a Dockerfile 
 
-For example, to create a Dockerfile based on the latest Rocker Rstudio, install attached packages and include python:
+For example, to create a Dockerfile based on the latest Rocker Rstudio and install whatever packages are loaded into the local session:
 
 ```r
-docker_file(dockerfile = "inst/dockerfiles/Dockerfile",
-                        which_pkgs = "loaded",
-                        name = "rstudio",
-                        tag = NULL,
-                        include_python = TRUE)
+containr <- containr$new(image = "rstudio", name = "containr", tag = "latest", 
+  packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE, 
+  use_local = FALSE)
 
 ```
 
-The return process from this function results in the creation of a `inst/dockerfiles/Dockerfile` which contains the Docker instructions to build an image. If you have any packages that are on Github then, the function will take note of these and attempt to add them to the install file as well. Any packages already installed on the base Rocker image will be skipped. 
+The return process from this function results in the creation of a `docker/Dockerfile` which contains the Docker instructions to build an image. If you have any packages that are on Github then, the function will take note of these and attempt to add them to the install file as well. Any packages already installed on the base Rocker image will be skipped. 
 
-#### Build a Rocker Container 
+<img src="inst/figures/initialize.png" align="centre"/>
 
-The `docker_build()` function will then read the newly created `Dockerfile` and build the image based on the previous user requirements. This is saved to the local Docker register and images can be view with the `docker_images()` function. 
+#### View Preferences 
 
-```r
-docker_build(dockerfile =  "inst/dockerfiles/Dockerfile", name = "user/imagename")
-```
+At any point you can check and change what was initialized. This will clear the `docker` folder and re-write the folder and scripts according to your preferences. Calling the `print()` will give you sanity checks for your preferences and the **Status** will update automatically. 
 
-#### Run a Rocker Container
+<img src="inst/figures/print_settings_command.png" align="centre"/>
 
-Finally,`rocker_run()` can then be used (with the user supplied Docker image) to launch a Rstudio container in the browser, activating the current working project. Packages provided in the `which_pkgs = c("loaded", "installed", "none")` argument preference should be available. 
+The `proc()` will display the running container which at this point we have nothing built or running: 
 
-```r
-rocker_run(image = "user/imagename")
+<img src="inst/figures/check_process.png" align="centre"/>
 
-```
+#### Build a ContainR
+
+Setting the `build_image(TRUE)` flag will then read the newly created `Dockerfile` and build the image based on the previous user requirements. This is saved to the local Docker register and images can be view with the `docker_images()` function.
+
+<img src="inst/figures/image_building.png" align="centre"/>
+
+> Note that this can take some time depending on your install preferences. 
+
+#### Start
+When this finished building the image is now ready to be started. The `start()` fun will launch the container in a background process but if we run the `proc()` then we can see that it is up and running. 
+
+<img src="inst/figures/process_active.png" align="centre"/>
+
+You can run the `docker_images()` to view the docker registery of built images. 
+
+<img src="inst/figures/docker_images.png" align="centre"/>
+
+### Launch 
+
+Running `launch()` will open a the session in a new browser window. 
+
+### Stop
+
+Running `stop()` will stop the container session completely leaving the image built intact. 
 
 ----
 
 There are similar packages available such as [dockr](https://github.com/smaakage85/dockr) or [devindocker](https://github.com/ThinkR-open/devindocker) which provide various levels of functionality. We also recommend checking these out to see if these address your requirements. 
+
+### References 
+
+**ContainR** was created using the following amazing packages and developers: 
+
+The team at Rocker-Versioned 

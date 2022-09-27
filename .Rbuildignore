@@ -4,6 +4,8 @@
 ^\.github$
 ^\.local$
 ^README\.Rmd$
-
 ^doc$
 ^Meta$
+^R/deleteme\.R$
+^newmethods.R$
+^newmthods\.R$
