@@ -23,20 +23,20 @@ Creates a new \code{containr} object based on the \url{https://rocker-project.or
 
 To get started, load a project and load any packages used throughout your scripts.
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{cont <- containr$new(image = "rstudio", name = "testing", tag = "latest",
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{cont <- containr$new(image = "rstudio", name = "testing", tag = "latest",
  packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE,
  use_local = TRUE)
 }\if{html}{\out{</div>}}
 
 Then use the \code{build_image(TRUE)} to flag the build process
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{ cont$build_image(TRUE)
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{ cont$build_image(TRUE)
  cont$print()
 }\if{html}{\out{</div>}}
 
 Start then launch the container session in a new browser session
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{cont$start() # Start the container
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{cont$start() # Start the container
 cont$proc() # View the processes
 cont$launch() # launch session
 cont$stop() # stop the container

@@ -13,18 +13,18 @@
 #'
 #' @section Setup:
 #' To get started, load a project and load any packages used throughout your scripts.
-#' ```r
+#' ```R
 #' cont <- containr$new(image = "rstudio", name = "testing", tag = "latest",
 #'  packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE,
 #'  use_local = TRUE)
 #' ```
 #' Then use the `build_image(TRUE)` to flag the build process
-#' ```r
+#' ```R
 #'  cont$build_image(TRUE)
 #'  cont$print()
 #' ```
 #' Start then launch the container session in a new browser session
-#' ```r
+#' ```R
 #' cont$start() # Start the container
 #' cont$proc() # View the processes
 #' cont$launch() # launch session
