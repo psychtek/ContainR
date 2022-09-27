@@ -1,5 +1,5 @@
 .onAttach <- function(lib, pkg)  {
-  vers <- utils::packageDescription("ContainR",
+  vers <- utils::packageDescription("containr",
                                     fields ="Version")
 
   bsu_rule_color <- "#7FD2FF"

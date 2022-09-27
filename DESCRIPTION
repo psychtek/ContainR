@@ -39,7 +39,6 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Collate: 
-    'dockerfile.R'
     'docker.R'
     'containr.R'
     'containr_package.R'

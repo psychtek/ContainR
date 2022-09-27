@@ -1,4 +1,4 @@
-#' @include containr.R docker.R dockerfile.R
+#' @include containr.R
 #' @title docker Class Object
 #'
 #' @description Work in progress.
