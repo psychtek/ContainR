@@ -205,7 +205,7 @@ dockerfile <- R6::R6Class(
 
     create_dockerfile = function(){
 
-      cli::cli_h1("Writing Dockerfile")
+      cli::cli_h1("Creating Dockerfile")
       # File overwrite warning
       if(fs::file_exists(private$containr_dockerfile)) {
         cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
@@ -219,27 +219,31 @@ dockerfile <- R6::R6Class(
         paste(""),
         if(isTRUE(private$containr_include_python)) {
           c(
-            paste("COPY /docker/scripts/install_python.sh /tmp/"),
+            paste("COPY", private$python_file, "/tmp/"),
             paste(""),
-            paste("COPY /docker/scripts/install_pyenv.sh /tmp/"),
+            paste("COPY", private$python_env, "/tmp/"),
             paste(""),
             paste("RUN", "chmod +x /tmp/install_python.sh"),
             paste(""),
+            paste("RUN", "chmod +x /tmp/install_pyenv.sh"),
+            paste(""),
             paste("RUN", "/tmp/install_python.sh"),
+            paste(""),
+            paste("RUN", "/tmp/install_pyenv.sh"),
             paste(""),
             paste("RUN", "R -e \"reticulate::py_config()\""),
             paste("")
           )
         },
-        paste("COPY /docker/scripts/install_libs_local.sh /tmp/"),
         paste(""),
-        paste("COPY /docker/scripts/install_additional.sh /tmp/"),
-        paste(""),
-        paste("RUN chmod +x /tmp/install_libs_local.sh"),
-        paste(""),
-        paste("RUN chmod +x /tmp/install_additional.sh"),
-        paste(""),
-        paste("RUN", "/tmp/install_additional.sh")
+        if(private$containr_packages %in% c("loaded", "installed")){
+          c(paste("COPY /docker/scripts/install_additional.sh /tmp/"),
+            paste(""),
+            paste("RUN chmod +x /tmp/install_additional.sh"),
+            paste(""),
+            paste("RUN", "/tmp/install_additional.sh"))
+        },
+        paste("")
       ),
         collapse = "\n")
 
@@ -252,7 +256,7 @@ dockerfile <- R6::R6Class(
 
     setup_packages = function(){
       packages <- private$containr_packages
-      bash_file <- "docker/scripts/install_libs_local.sh"
+      bash_file <- "docker/scripts/install_additional.sh"
 
       if(packages %in% "none"){
         private$reset_dir()
@@ -332,20 +336,36 @@ dockerfile <- R6::R6Class(
           paste(""),
           paste("export DEBIAN_FRONTEND=noninteractive"),
           paste(""),
+          paste("function apt_install() {"),
+          paste("\tif ! dpkg -s \"$@\" >/dev/null 2>&1; then"),
+          paste("\t\tif [ \"$(find /var/lib/apt/lists/* | wc -l)\" = \"0\" ]; then"),
+          paste("\t\t\tapt-get update"),
+          paste("\t\tfi"),
+          paste("\t\tapt-get install -y --no-install-recommends \"$@\""),
+          paste("\tfi"),
+          paste("}"),
+          paste(""),
           paste("UBUNTU_VERSION=$(lsb_release -sc)"),
           paste("CRAN_SOURCE=${CRAN/\"__linux__/$UBUNTU_VERSION/\"/\"\"}"),
           paste(""),
           paste("if [ \"$ARCH\" = \"aarch64\" ]; then"),
-          paste("\t", "CRAN=$CRAN_SOURCE"),
+          paste("\tCRAN=$CRAN_SOURCE"),
           paste("fi"),
           paste(""),
           if(length(Github) > 0) {
-            c(paste("Rscript -e", paste("\"remotes::install_github(\'", Github , "\')\" ", sep = "") ," "))
+            c(paste("Rscript -e \"install.packages(c('remotes'), repos='${CRAN_SOURCE}')\""),
+              paste("Rscript -e", paste("\"remotes::install_github(\'", Github , "\')\" ", sep = "") ," "))
           },
           paste(""),
           paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),
           paste(cran_packs_first),
           paste(cran_packs_last),
+          paste(""),
+          paste("rm -rf /var/lib/apt/lists/*"),
+          paste("rm -rf /tmp/downloaded_packages"),
+          paste("strip /usr/local/lib/R/site-library/*/libs/*.so"),
+          paste(""),
+          paste("echo -e \"\nFinished intalling additional packages!\""),
           paste("")
         ),
           collapse = "\n")
@@ -360,55 +380,55 @@ dockerfile <- R6::R6Class(
     },
 
     # Setup the docker files and folders
+    # Scripts ported from Rocker-project
+    # Could be a better way todo this like with wget or curl.
+    # Functions for now.
     create_directories = function(){
-
-      private$python_file = "install_python.sh"
-      private$python_env = "install_pyenv.sh"
-      private$additional = "install_additional.sh"
-
-      #cli::cli_h2("Creating Docker Folders")
 
       if(!fs::dir_exists("docker")) {
         fs::dir_create("docker")
       }
 
-      if(!fs::dir_exists("docker/scripts")) {
-        fs::dir_create("docker/scripts")
-      }
+      if(private$containr_packages %in% c("loaded", "installed")){
+        if(!fs::dir_exists("docker/scripts")) {
+          fs::dir_create("docker/scripts")
+        }
 
-      if(!fs::file_exists("docker/scripts/install_libs_local.sh")) {
-        fs::file_create("docker/scripts/install_libs_local.sh")
+        if(!fs::file_exists("docker/scripts/install_additional.sh")) {
+          fs::file_create("docker/scripts/install_additional.sh")
+        }
       }
 
       if(!fs::file_exists("docker/Dockerfile")) {
         fs::file_create("docker/Dockerfile")
       }
 
-      if(!fs::file_exists("docker/scripts/install_python.sh")) {
-        private$get_extdata(private$python_file)
+      if(isTRUE(private$containr_include_python)) {
+        fs::dir_create("docker/scripts")
+        inst_python <- "/install_python.sh"
+        tmp_dir <- tempdir()
+        inst_python_dest <- paste0(tmp_dir, inst_python)
+        curl::curl_download(url = "https://raw.githubusercontent.com/rocker-org/rocker-versioned2/master/scripts/install_python.sh",
+          destfile = inst_python_dest,
+          mode = "wb",
+          quiet = FALSE)
+        file.copy(inst_python_dest, "docker/scripts")
+        private$python_file = "docker/scripts/install_python.sh"
       }
 
-      if(!fs::file_exists("docker/scripts/install_pyenv.sh")) {
-        private$get_extdata(private$python_env)
+      if(isTRUE(private$containr_include_python)) {
+        fs::dir_create("docker/scripts")
+        inst_pyenv <- "/install_pyenv.sh"
+        tmp_dir <- tempdir()
+        inst_pyenv_dest <- paste0(tmp_dir, inst_pyenv)
+        curl::curl_download(url = "https://raw.githubusercontent.com/rocker-org/rocker-versioned2/master/scripts/install_pyenv.sh",
+          destfile = inst_pyenv_dest,
+          mode = "wb",
+          quiet = FALSE)
+        file.copy(inst_pyenv_dest, "docker/scripts")
+        private$python_env = "docker/scripts/install_pyenv.sh"
       }
 
-      if(!fs::file_exists("docker/scripts/install_additional.sh")) {
-        private$get_extdata(private$additional)
-      }
-
-    },
-
-    get_extdata = function(file = NA){
-      if(fs::dir_exists("docker/scripts")){
-        x <- system.file("extdata",
-          file,
-          package = "ContainR",
-          mustWork = TRUE)
-        fs::file_copy(x,
-          "docker/scripts",
-          overwrite = TRUE)
-
-      }
     },
 
     reset_dir = function(){

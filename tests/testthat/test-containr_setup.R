@@ -39,9 +39,9 @@ test_that("Creates Dockerfiles and folders", {
     docker_file <- dockerfile$new(name = "testing",
       rocker_image = "rstudio",
       dockerfile = "docker/Dockerfile",
-      packages = "none",
+      packages = "loaded",
       tag = "latest",
-      include_python = FALSE,
+      include_python = TRUE,
       build = FALSE)
     expect_true(fs::dir_exists("docker"))
     expect_true(fs::dir_exists("docker/scripts"))

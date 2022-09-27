@@ -221,40 +221,6 @@ containr <- R6::R6Class("containr",
       private$containr_config <-  create_config_file(proj_name)
     },
 
-    # Image check in register or rocker values
-    # check_image = function(proj_image){
-    #
-    #   proj_image <- proj_image
-    #   # Tag set internal for now
-    #   tag = NULL
-    #   if(is.null(tag)){
-    #     tag <- "latest"
-    #   } else {
-    #     tag <- tag
-    #   }
-    # super$docker_images()
-    #   repo_images <- docker_images() |> dplyr::filter(Repository %in% proj_image)
-    #
-    #   data_rocker_table <- data_rocker_table
-    #
-    #   if(proj_image %in% repo_images$Repository) {
-    #
-    #     private$proj_image <- proj_image
-    #
-    #   } else if(proj_image %in% data_rocker_table$name) {
-    #     # Switch for changing rocker image based on image name
-    #     private$proj_image <- switch(proj_image,
-    #       rstudio = paste0("rocker/rstudio:", tag),
-    #       tidyerse = paste0("rocker/tidyverse:", tag),
-    #       verse = paste0("rocker/verse:", tag),
-    #       geospatial = paste0("rocker/geospatial:", tag),
-    #       binder = paste0("rocker/binder:", tag))
-    #   } else {
-    #     cli::cli_abort("{.var {image}} not a Rocker image or in Docker Register. Run {.fun docker_build}")
-    #   }
-    #   return(private$proj_image)
-    # },
-
     # Setup the docker command string
     setup_command = function(){
 
@@ -417,6 +383,7 @@ containr <- R6::R6Class("containr",
 
 # Config file that will overwrite the Rstudio one
 # and then when session is launch it will activate working dir
+# Works but could be a better way.
 create_config_file <- function(proj_name){
 
   rprofile <-  paste0(tempdir(), "/.Rprofile")
