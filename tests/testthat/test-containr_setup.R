@@ -39,7 +39,7 @@ test_that("Creates Dockerfiles and folders", {
     docker_file <- containr$new(name = "testing",
       image = "rstudio",
       dockerfile = "docker/Dockerfile",
-      packages = "loaded",
+      packages = "none",
       tag = "latest",
       include_python = TRUE,
       build = FALSE)
@@ -48,7 +48,6 @@ test_that("Creates Dockerfiles and folders", {
     expect_true(fs::file_exists("docker/Dockerfile"))
     expect_true(fs::file_exists("docker/scripts/install_python.sh"))
     expect_true(fs::file_exists("docker/scripts/install_pyenv.sh"))
-    expect_true(fs::file_exists("docker/scripts/install_additional.sh"))
   },
     clean = TRUE)
 })
