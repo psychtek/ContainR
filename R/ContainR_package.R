@@ -1,9 +1,9 @@
-#' aggreCAT: mathematically aggregating expert judgments
+#' containr: Containerize you workflow
 #'
-#' To learn more about \pkg{ContainR}, start with the vignettes: \code{browseVignettes(package = "ContainR")}
+#' To learn more about \pkg{containr}, start with the vignettes: \code{browseVignettes(package = "containr")}
 #'
 #' @docType package
-#' @name ContainR
+#' @name containr
 #'
 #' @keywords internal
 "_PACKAGE"

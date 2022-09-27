@@ -1,5 +1,5 @@
-Package: ContainR
-Title: Container Builder
+Package: containr
+Title: containr Builder
 Version: 0.1.5
 Authors@R: c(person(given = "Aaron", 
                     family = "Willcox", 
@@ -19,12 +19,13 @@ Imports:
     magrittr,
     crayon,
     sys,
-    processx,
+    processx
 Depends: 
     R (>= 3.5.0)
 LazyData: true
 Suggests: 
     knitr,
+    curl,
     R6,
     fs,
     dplyr, 
@@ -38,11 +39,10 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Collate: 
-    'ContainR_package.R'
-    'docker.R'
     'dockerfile.R'
+    'docker.R'
     'containr.R'
+    'containr_package.R'
     'data.R'
-    'extdata.R'
     'utils-pipe.R'
     'zzz.R'

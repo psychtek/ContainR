@@ -47,13 +47,6 @@ You can install the development version of `ContainR` from
 devtools::install_github("psychtek/ContainR")
 ```
 
-## Quick Launch
-
-> Run the `rocker_run()` function which will launch the
-> `rocker/rstudio:latest` stack into a Docker container, port **local
-> config** and **environment** settings into the container and activate
-> your current activates the Rstudio project in a virtual session.
-
 Supported
 [rocker-versioned](https://github.com/rocker-org/rocker-versioned2)
 stacks can be found by exploring the `data_rocker_table` inside the
@@ -61,14 +54,18 @@ package or visiting their
 [repository](https://github.com/rocker-org/rocker-versioned2) to learn
 more.
 
-    #> # A tibble: 5 × 4
-    #>   name       image             base_image        description                    
-    #>   <chr>      <chr>             <chr>             <chr>                          
-    #> 1 rstudio    rocker/rstudio    rocker/r-ver      Rstudio Server                 
-    #> 2 tidyverse  rocker/tidyverse  rocker/rstudio    Adds tidyverse packages & devt…
-    #> 3 verse      rocker/verse      rocker/tidyverse  Adds tex & publishing-related …
-    #> 4 geospatial rocker/geospatial rocker/verse      Adds geospatial packages       
-    #> 5 binder     rocker/binder     rocker/geospatial Adds requirements to run repos…
+    #>         name             image        base_image
+    #> 1    rstudio    rocker/rstudio      rocker/r-ver
+    #> 2  tidyverse  rocker/tidyverse    rocker/rstudio
+    #> 3      verse      rocker/verse  rocker/tidyverse
+    #> 4 geospatial rocker/geospatial      rocker/verse
+    #> 5     binder     rocker/binder rocker/geospatial
+    #>                                      description
+    #> 1                                 Rstudio Server
+    #> 2             Adds tidyverse packages & devtools
+    #> 3          Adds tex & publishing-related package
+    #> 4                       Adds geospatial packages
+    #> 5 Adds requirements to run repos on mybinder.org
 
 ### Docker Check
 
@@ -81,96 +78,92 @@ for [OSX](https://docs.docker.com/desktop/install/mac-install/),
 docker_check()
 ```
 
-### Run R Project in Rocker Rstudio Container
-
-The `rocker_run()` function will launch the latest version of
-(`rocker/rstudio:latest`) from the
-[rocker-versioned](https://github.com/rocker-org/rocker-versioned2)
-stack.
-
-``` r
-rocker_run()
-```
-
-Alternatively, a version can be specified in the `tag` argument. To view
-the images and specified tags visit the [Rocker-Versioned
-Wiki](https://github.com/rocker-org/rocker-versioned2/wiki). If the
-image is not found locally
-(`Unable to find image 'rocker/rstudio:4.0.0' locally`) it will proceed
-to grab the image from DockerHub.
-
-``` r
-rocker_run(image = "rocker/rstudio", tag = "4.0.0")
-```
-
 ## Workflow Basics
 
 - Open your current working Rstudio project.
 - Explore which base [Rocker image](https://rocker-project.org/) to use
-  `ContainR::data_rocker_table`.
-- **Create** a Dockerfile `docker_file()`.
-- **Build** a container `docker_build()`.
-- **Run** the container (Launches browser) `rocker_run()`.
-- **Stop** the container \`rocker_stop()\`\`
+  `containr::data_rocker_table`.
+- **Create** a Dockerfile `containr$new)`.
+- **Build** a container `build_image(TRUE)`.
+- **Run** the container (Launches browser) `start()`.
+- **Stop** the container `stop()`
 
 ### Usage
 
-The `docker_file()` function is an attempt to make it easier to create a
-`Dockerfile` by allowing the user to:
-
 1)  choose the appropriate Rocker base image (defaults to latest
-    Rstudio);
+    `rocker/rstudio:latest`);
 
 2)  install either your local `loaded`, `installed` or `none` packages;
 
-3)  specify which version (tag);
-
-4)  and choose to included python (pandas and numpy).
+3)  and choose to included python.
 
 #### Create a Dockerfile
 
-For example, to create a Dockerfile based on the latest Rocker Rstudio,
-install attached packages and include python:
+For example, to create a Dockerfile based on the latest Rocker Rstudio
+and install whatever packages are loaded into the local session:
 
 ``` r
-docker_file(dockerfile = "inst/dockerfiles/Dockerfile",
-                        which_pkgs = "loaded",
-                        name = "rstudio",
-                        tag = NULL,
-                        include_python = TRUE)
+containr <- containr$new(image = "rstudio", name = "containr", tag = "latest", 
+  packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE, 
+  use_local = FALSE)
 ```
 
 The return process from this function results in the creation of a
-`inst/dockerfiles/Dockerfile` which contains the Docker instructions to
-build an image. If you have any packages that are on Github then, the
-function will take note of these and attempt to add them to the install
-file as well. Any packages already installed on the base Rocker image
-will be skipped.
+`docker/Dockerfile` which contains the Docker instructions to build an
+image. If you have any packages that are on Github then, the function
+will take note of these and attempt to add them to the install file as
+well. Any packages already installed on the base Rocker image will be
+skipped.
 
-#### Build a Rocker Container
+<img src="inst/figures/initialize.png" align="centre"/>
 
-The `docker_build()` function will then read the newly created
+#### View Preferences
+
+At any point you can check and change what was initialized. This will
+clear the `docker` folder and re-write the folder and scripts according
+to your preferences. Calling the `print()` will give you sanity checks
+for your preferences and the **Status** will update automatically.
+
+<img src="inst/figures/print_settings_command.png" align="centre"/>
+
+The `proc()` will display the running container which at this point we
+have nothing built or running:
+
+<img src="inst/figures/check_process.png" align="centre"/>
+
+#### Build a ContainR
+
+Setting the `build_image(TRUE)` flag will then read the newly created
 `Dockerfile` and build the image based on the previous user
 requirements. This is saved to the local Docker register and images can
 be view with the `docker_images()` function.
 
-``` r
-docker_build(dockerfile =  "inst/dockerfiles/Dockerfile", name = "user/imagename")
-```
-
 <img src="inst/figures/image_building.png" align="centre"/>
 
-#### Run a Rocker Container
+> Note that this can take some time depending on your install
+> preferences.
 
-Finally,`rocker_run()` can then be used (with the user supplied Docker
-image) to launch a Rstudio container in the browser, activating the
-current working project. Packages provided in the
-`which_pkgs = c("loaded", "installed", "none")` argument preference
-should be available.
+#### Start
 
-``` r
-rocker_run(image = "user/imagename")
-```
+When this finished building the image is now ready to be started. The
+`start()` fun will launch the container in a background process but if
+we run the `proc()` then we can see that it is up and running.
+
+<img src="inst/figures/process_active.png" align="centre"/>
+
+You can run the `docker_images()` to view the docker registery of built
+images.
+
+<img src="inst/figures/docker_images.png" align="centre"/>
+
+### Launch
+
+Running `launch()` will open a the session in a new browser window.
+
+### Stop
+
+Running `stop()` will stop the container session completely leaving the
+image built intact.
 
 ------------------------------------------------------------------------
 

@@ -5,8 +5,8 @@ test_that("Setup dockerfile build ", {
   withr::with_tempdir({
   temp_dockerfile <- "docker/Dockerfile"
 
-  docker_file <- dockerfile$new(name = "testing",
-    rocker_image = "rstudio",
+  docker_file <- containr$new(name = "testing",
+    image = "rstudio",
     dockerfile = "docker/Dockerfile",
     packages = "none",
     tag = "latest",
@@ -36,8 +36,8 @@ test_that("Setup dockerfile build ", {
 test_that("Creates Dockerfiles and folders", {
 
   withr::with_tempdir({
-    docker_file <- dockerfile$new(name = "testing",
-      rocker_image = "rstudio",
+    docker_file <- containr$new(name = "testing",
+      image = "rstudio",
       dockerfile = "docker/Dockerfile",
       packages = "loaded",
       tag = "latest",
@@ -57,8 +57,8 @@ test_that("Creates Dockerfiles and folders", {
 test_that("Set config flags for docker build", {
 
   withr::with_tempdir({
-    docker_file <- dockerfile$new(name = "testing",
-      rocker_image = "rstudio",
+    docker_file <- containr$new(name = "testing",
+      image = "rstudio",
       dockerfile = "docker/Dockerfile",
       packages = "none",
       tag = "latest",
@@ -89,15 +89,15 @@ test_that("Docker commands return a tibble", {
 test_that("Change containr settings", {
 
   withr::with_tempdir({
-    docker_file <- dockerfile$new(name = "testing",
-      rocker_image = "rstudio",
+    docker_file <- containr$new(name = "testing",
+      image = "rstudio",
       dockerfile = "docker/Dockerfile",
       packages = "none",
       tag = "latest",
       include_python = FALSE,
       build = FALSE)
 
-    expect_equal(docker_file$set_image("newname"), "newname")
+    expect_equal(docker_file$set_image("verse"), "rocker/verse:latest")
     expect_equal(docker_file$set_name("projname"), "projname")
 
   },
@@ -107,8 +107,8 @@ test_that("Change containr settings", {
 test_that("Errors on non rocker image", {
 
   withr::with_tempdir({
-    expect_error(dockerfile$new(name = "testing",
-      rocker_image = "none",
+    expect_error(containr$new(name = "testing",
+      image = "none",
       dockerfile = "docker/Dockerfile",
       packages = "none",
       tag = "latest",
