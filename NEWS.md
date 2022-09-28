@@ -1,5 +1,20 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# containr 0.1.5.9000
+
+- Updated documentation description for clearer definition of R6 class.
+- Updated the `set_tag()` function with option to set the tag to match the local R version.
+- Added print output to the `start` and `stop` funs.
+- Added `get_cmd()` fun to print the raw RUN command.
+- Cleaned up the code to install additional packages.
+- Update `README`
+- changed `none` in tests
+- doc updates
+- Change code formatting in documentation.
+- Naming fixes
+- Ported functions to R6 classes and purged old files. 
+
+
 # ContainR 0.1.5
 
 - fix extra fun argument.
