@@ -2,7 +2,7 @@
 #' @title containr Class Object
 #'
 #' @description
-#' A class object of `containr` that sets up a object to launch a defined rocker
+#' A R6 class object of `containr` that sets up a object to launch a defined rocker
 #' containr in a browser. This function creates a dockerfile based off the rocker version image stacks and reads
 #' from session information to install `loaded `, `installed` \(or `none`\) R libraries. The `install2.r` handles
 #' additional package installs and will skip already installed packages on the rocker stack image. The final `Dockerfile`

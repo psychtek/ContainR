@@ -1,7 +1,8 @@
 #' @include containr.R
 #' @title docker Class Object
 #'
-#' @description Work in progress.
+#' @description
+#' A R6 Docker class as a wrapper for the docker commands.
 #'
 docker <- R6::R6Class(
   classname = "docker",

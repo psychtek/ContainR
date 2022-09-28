@@ -4,7 +4,7 @@
 \alias{docker}
 \title{docker Class Object}
 \description{
-Work in progress.
+A R6 Docker class as a wrapper for the docker commands.
 
 Docker System Wrapper WPI
 }
