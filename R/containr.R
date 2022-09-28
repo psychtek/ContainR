@@ -35,6 +35,7 @@
 #' @export
 containr <- R6::R6Class("containr",
   cloneable = FALSE,
+  lock_class = TRUE,
 
   # Public Functions --------------------------------------------------------
 
@@ -72,8 +73,8 @@ containr <- R6::R6Class("containr",
     #' this argument with the string of the *name* of the build. Built container images can be
     #' view by running the `docker_images()` function.
     #'
-    #' @param name The name of the containr for the docker process. If none is applied then
-    #' it will default to the active Rstudio project name.
+    #' @param name The name of the containr image to build for the docker process to launch. If none is applied then
+    #' it will default to the working Rstudio project directory
     #'
     #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
     #'
@@ -149,10 +150,14 @@ containr <- R6::R6Class("containr",
     #' @description
     #' Set the tag of the image. This defaults to *latest* if left flagged as
     #' `NULL`.
-    #' @param tag Change tag name. Defaults to `latest`
+    #'
+    #' @param tag Character string to change tag name to specify the version of the base image. Setting `local_version` sets the
+    #' tag to use the local R version in the session. Or supply a specific R version number `R (>= 4.0.0)`.
     set_tag = function(tag){
       if(isTRUE(is.null(tag))){
         self$tag <- "latest"
+      } else if(tag == "local_version"){
+        self$tag <- getRversion()
       } else {
         self$tag <- tolower(tag)
       }
@@ -172,7 +177,10 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' Setting for which packages to append to the build install script.
-    #' @param packages A character string of `c("loaded", "none", "installed")`.
+    #'
+    #' @param packages A character string of `c("loaded", "none", "installed")`. Where `loaded` installs attached
+    #' packages or what is in the `DESCRIPTION` file. The `installed` string will install *all the things* - this will
+    #' need to be used with care if you have a large R library. The `none` character string doesnt install any packages.
     set_packages = function(packages){
       self$packages <- match.arg(packages, c("loaded", "none", "installed"))
       private$containr_packages <- self$packages
@@ -212,12 +220,14 @@ containr <- R6::R6Class("containr",
     #' Start the predefined containr as set by the `name` argument.
     start = function(){
       private$containr_start()
+      self$proc()
     },
 
     #' @description
     #' Stop containr object
     stop = function(){
       private$containr_stop()
+      self$proc()
     },
 
     #' @description
@@ -271,7 +281,7 @@ containr <- R6::R6Class("containr",
     #' @description
     #' Displays the process information of the active containr.
     proc = function(){
-      cli::cli_h1("Process")
+      cli::cli_h1("<Process>")
       cat(paste(
         "<", cli::style_bold("ID:"),
         if(isTRUE(self$status() == "Running")) {
@@ -310,7 +320,7 @@ containr <- R6::R6Class("containr",
     #' `containr$info()` shows some information about the
     #' process on the screen, whether it is running and it's process id, etc.
     print = function(){
-      cli::cli_h1("ContainR")
+      cli::cli_h1("<ContainR>")
 
       cat(
         " |", cli::style_bold("Project:"), private$containr_name, "\n",
@@ -346,7 +356,15 @@ containr <- R6::R6Class("containr",
           cli::style_italic(private$setup_command())), "\n")
 
       invisible(self)
+    },
+
+    #' @description
+    #' Returns a character string of the run command.
+    get_cmd = function(){
+      cmd <- private$setup_command()
+      return(cmd)
     }
+
   ),
 
   # Private Functions -------------------------------------------------------
@@ -376,12 +394,7 @@ containr <- R6::R6Class("containr",
 
     create_dockerfile = function(){
 
-      cli::cli_h1("Creating Dockerfile")
-      # File overwrite warning
-      if(fs::file_exists(private$containr_dockerfile)) {
-        cli::cli_alert_warning("{.emph dockerfile} will be overwritten.",
-          class = cli::cli_div(theme = list(span.emph = list(color = "orange"))))
-      }
+      cli::cli_h2("Creating Dockerfile")
 
       # command layout for dockerfile
       docker_cmds <- paste(c(
@@ -451,11 +464,9 @@ containr <- R6::R6Class("containr",
         cran_packs_first <- paste0("\t", CRAN$Package[0 -length(CRAN$Package)], " \\")
         cran_packs_last <- paste0("\t", CRAN$Package[length(CRAN$Package) - 0], "")
 
-
         # GitHub Packages
         Other <- packs |>
-          dplyr::filter(Source != stringr::str_match_all(Source,
-            pattern = "CRAN \\(R \\d.\\d.\\d\\)")) |>
+          dplyr::filter(!Package %in% CRAN$Package) |>
           dplyr::filter(Source != "local") |>
           dplyr::mutate(Source = stringr::str_extract_all(Source,
             pattern = "(.*?)@",
@@ -469,21 +480,22 @@ containr <- R6::R6Class("containr",
             pattern = "@"))
 
         not_installed <- Other |>
-          dplyr::filter(Source == "")
+          dplyr::filter(Source == "") |>
+          dplyr::select(-Source)
 
         Github <- Other |>
-          dplyr::filter(Source != "") |>
-          dplyr::select(Source) |>
-          purrr::pluck("Source")
+          dplyr::filter(Source != "")
+        #dplyr::select(Source)
+        #purrr::pluck("Source")
 
         if(nrow(not_installed) > 0){
-          cli::cli_alert_warning("Not Installing { {nrow(not_installed)}} Package{?s}")
+          cli::cli_alert_warning("{ {nrow(not_installed)}} Unknown Source Package{?s}")
           cli::cli_alert_warning("{.val {not_installed$Package}}")
         }
 
-        if(length(Github) > 0){
+        if(nrow(Github) > 0){
           cli::cli_alert_info("Including { {nrow(Github)}} GitHub Package{?s}")
-          cli::cli_alert_info("{.val {Github}}")
+          cli::cli_alert_info("{.val {Github$Package}}")
         }
 
         if(nrow(CRAN) > 0){
@@ -523,7 +535,8 @@ containr <- R6::R6Class("containr",
           paste(""),
           if(length(Github) > 0) {
             c(paste("Rscript -e \"install.packages(c('remotes'), repos='${CRAN_SOURCE}')\""),
-              paste("Rscript -e", paste("\"remotes::install_github(\'", Github , "\')\" ", sep = "") ," "))
+              paste("\n echo -e 'Installing GitHub Packages'\n "),
+              paste("Rscript -e", paste("\"remotes::install_github(\'",  Github$Source , "\')\" ", sep = "") ," "))
           },
           paste(""),
           paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),

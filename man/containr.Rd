@@ -95,6 +95,7 @@ Start a ContainR}
 \item \href{#method-containr-build_image}{\code{containr$build_image()}}
 \item \href{#method-containr-proc}{\code{containr$proc()}}
 \item \href{#method-containr-print}{\code{containr$print()}}
+\item \href{#method-containr-get_cmd}{\code{containr$get_cmd()}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -125,8 +126,8 @@ visit \url{https://rocker-project.org/images/}. If you ran \code{docker_build()}
 this argument with the string of the \emph{name} of the build. Built container images can be
 view by running the \code{docker_images()} function.}
 
-\item{\code{name}}{The name of the containr for the docker process. If none is applied then
-it will default to the active Rstudio project name.}
+\item{\code{name}}{The name of the containr image to build for the docker process to launch. If none is applied then
+it will default to the working Rstudio project directory}
 
 \item{\code{tag}}{A character string of the require version. If no tag is supplied then the function will default to \code{latest}.}
 
@@ -202,7 +203,8 @@ Set the tag of the image. This defaults to \emph{latest} if left flagged as
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{tag}}{Change tag name. Defaults to \code{latest}}
+\item{\code{tag}}{Character string to change tag name to specify the version of the base image. Setting \code{local_version} sets the
+tag to use the local R version in the session. Or supply a specific R version number \verb{R (>= 4.0.0)}.}
 }
 \if{html}{\out{</div>}}
 }
@@ -237,7 +239,9 @@ Setting for which packages to append to the build install script.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{packages}}{A character string of \code{c("loaded", "none", "installed")}.}
+\item{\code{packages}}{A character string of \code{c("loaded", "none", "installed")}. Where \code{loaded} installs attached
+packages or what is in the \code{DESCRIPTION} file. The \code{installed} string will install \emph{all the things} - this will
+need to be used with care if you have a large R library. The \code{none} character string doesnt install any packages.}
 }
 \if{html}{\out{</div>}}
 }
@@ -372,6 +376,16 @@ Displays the process information of the active containr.
 process on the screen, whether it is running and it's process id, etc.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$print()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-containr-get_cmd"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-get_cmd}{}}}
+\subsection{Method \code{get_cmd()}}{
+Returns a character string of the run command.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{containr$get_cmd()}\if{html}{\out{</div>}}
 }
 
 }
