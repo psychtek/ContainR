@@ -14,8 +14,7 @@ Docker System Wrapper WPI
 \item \href{#method-docker-new}{\code{docker$new()}}
 \item \href{#method-docker-print}{\code{docker$print()}}
 \item \href{#method-docker-show_output}{\code{docker$show_output()}}
-\item \href{#method-docker-docker_images}{\code{docker$docker_images()}}
-\item \href{#method-docker-docker_containers}{\code{docker$docker_containers()}}
+\item \href{#method-docker-show_json}{\code{docker$show_json()}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -24,7 +23,7 @@ Docker System Wrapper WPI
 \subsection{Method \code{new()}}{
 Work in progress: Eventually will be part of the containr class.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{docker$new(process = NA, commands = NA, options = NA)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{docker$new(process = NA, commands = NULL, options = NULL, args = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -34,9 +33,11 @@ Work in progress: Eventually will be part of the containr class.
 is setup for \code{docker}.}
 
 \item{\code{commands}}{The main docker commands. Currently support commands
-are \code{images}, \code{container} and \code{search}.}
+are "image", "container", "search", "build", "history", "inspect".}
 
-\item{\code{options}}{the \code{command} option arguments.}
+\item{\code{options}}{the \code{command} option arguments or \code{image}}
+
+\item{\code{args}}{Additional arguments or flags for the docker commands}
 }
 \if{html}{\out{</div>}}
 }
@@ -62,22 +63,12 @@ Displays returned output in \code{tibble} format.
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-docker-docker_images"></a>}}
-\if{latex}{\out{\hypertarget{method-docker-docker_images}{}}}
-\subsection{Method \code{docker_images()}}{
-Displays a \code{tibble} of local images.
+\if{html}{\out{<a id="method-docker-show_json"></a>}}
+\if{latex}{\out{\hypertarget{method-docker-show_json}{}}}
+\subsection{Method \code{show_json()}}{
+Show the json in pretty format from the command
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{docker$docker_images()}\if{html}{\out{</div>}}
-}
-
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-docker-docker_containers"></a>}}
-\if{latex}{\out{\hypertarget{method-docker-docker_containers}{}}}
-\subsection{Method \code{docker_containers()}}{
-Displays a \code{tibble} of running containers.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{docker$docker_containers()}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{docker$show_json()}\if{html}{\out{</div>}}
 }
 
 }

@@ -184,44 +184,50 @@ functions:
 To run a docker command you can do it direct:
 
 ``` r
-docker$new(process = "docker",
+containr::docker$new(process = "docker",
     commands = "image",
     options = "ls")$show_output()
-#> # A tibble: 2 × 5
-#>   Repository   Tag    ID           CreatedSince      Size  
-#>   <chr>        <chr>  <chr>        <chr>             <chr> 
-#> 1 rstudio-rock latest 43333a2e7a4c 31 minutes ago    1.87GB
-#> 2 <none>       <none> fff24ba7fdba About an hour ago 1.87GB
+#> # A tibble: 5 × 5
+#>   Repository                Tag    ID           CreatedSince  Size  
+#>   <chr>                     <chr>  <chr>        <chr>         <chr> 
+#> 1 testing                   latest 109adc46fa7d 5 days ago    1.86GB
+#> 2 rocker/r-base             latest 8b9043f755f1 5 days ago    863MB 
+#> 3 rstudio-rock              latest 43333a2e7a4c 5 days ago    1.87GB
+#> 4 <none>                    <none> fff24ba7fdba 5 days ago    1.87GB
+#> 5 romancin/tinymediamanager latest 42880c846cf2 11 months ago 261MB
 ```
 
 or with the included functions:
 
 ``` r
-docker_images()
-#> # A tibble: 2 × 5
-#>   Repository   Tag    ID           CreatedSince      Size  
-#>   <chr>        <chr>  <chr>        <chr>             <chr> 
-#> 1 rstudio-rock latest 43333a2e7a4c 31 minutes ago    1.87GB
-#> 2 <none>       <none> fff24ba7fdba About an hour ago 1.87GB
+containr::docker_images()
+#> # A tibble: 5 × 5
+#>   Repository                Tag    ID           CreatedSince  Size  
+#>   <chr>                     <chr>  <chr>        <chr>         <chr> 
+#> 1 testing                   latest 109adc46fa7d 5 days ago    1.86GB
+#> 2 rocker/r-base             latest 8b9043f755f1 5 days ago    863MB 
+#> 3 rstudio-rock              latest 43333a2e7a4c 5 days ago    1.87GB
+#> 4 <none>                    <none> fff24ba7fdba 5 days ago    1.87GB
+#> 5 romancin/tinymediamanager latest 42880c846cf2 11 months ago 261MB
 ```
 
 Search dockerhub for images:
 
 ``` r
-docker_search("rstudio")
+containr::docker_search("rocker")
 #> # A tibble: 25 × 5
-#>    Name                         Description              StarC…¹ IsOff…² IsAut…³
-#>    <chr>                        <chr>                      <int> <lgl>   <chr>  
-#>  1 rocker/rstudio               "RStudio Server image"       399 NA      "[OK]" 
-#>  2 rstudio/r-base               "Docker Images for R"         30 NA      ""     
-#>  3 rocker/rstudio-stable        "Build RStudio based on…      16 NA      "[OK]" 
-#>  4 rstudio/r-session-complete   "Images for sessions an…      11 NA      ""     
-#>  5 rstudio/rstudio-server-pro   "Deprecated Docker imag…      10 NA      ""     
-#>  6 rstudio/rstudio-connect      "Default Docker image f…       6 NA      ""     
-#>  7 rstudio/plumber              ""                             6 NA      ""     
-#>  8 rstudio/rstudio-workbench    "Docker Image for RStud…       4 NA      ""     
-#>  9 ibmcom/rstudio-ppc64le       "Integrated development…       4 NA      ""     
-#> 10 rstudio/r-builder-images-win ""                             3 NA      ""     
+#>    Name               Description                        StarC…¹ IsOff…² IsAut…³
+#>    <chr>              <chr>                                <int> <lgl>   <chr>  
+#>  1 rocker/rstudio     "RStudio Server image"                 399 NA      [OK]   
+#>  2 rocker/shiny       ""                                     172 NA      [OK]   
+#>  3 rocker/tidyverse   "Version-stable build of R, rstud…     157 NA      [OK]   
+#>  4 rocker/r-base      "Basic R for Rocker And Official …      80 NA      [OK]   
+#>  5 rocker/verse       "Adds tex & related publishing pa…      64 NA      [OK]   
+#>  6 rocker/r-ver       "Reproducible builds to fixed ver…      49 NA      [OK]   
+#>  7 rocker/geospatial  "Docker-based Geospatial toolkit …      44 NA      [OK]   
+#>  8 rocker/shiny-verse "Rocker Shiny image + Tidyverse R…      44 NA      [OK]   
+#>  9 rocker/ropensci    ""                                      22 NA      [OK]   
+#> 10 rocker/r-devel     ""                                      22 NA      [OK]   
 #> # … with 15 more rows, and abbreviated variable names ¹​StarCount, ²​IsOfficial,
 #> #   ³​IsAutomated
 ```
@@ -232,9 +238,10 @@ docker_search("rstudio")
 
 ------------------------------------------------------------------------
 
-There are similar packages available such as
+There are similar packages available such as:
 [dockr](https://github.com/smaakage85/dockr),
 [devindocker](https://github.com/ThinkR-open/devindocker),
+[harbor](https://github.com/wch/harbor)
 [containerit](https://github.com/o2r-project/containerit) and
 [stevedore](https://github.com/richfitz/stevedore) which provide various
 levels of functionality. We also recommend checking these out to see if

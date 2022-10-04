@@ -134,7 +134,7 @@ A basic docker wrapper is also included that will build functionality as develop
 To run a docker command you can do it direct:
 
 ```{r echo=TRUE, message=TRUE, warning=TRUE}
-docker$new(process = "docker",
+containr::docker$new(process = "docker",
     commands = "image",
     options = "ls")$show_output()
 ```
@@ -142,14 +142,14 @@ docker$new(process = "docker",
 or with the included functions: 
 
 ```{r echo=TRUE, message=TRUE, warning=TRUE}
-docker_images()
+containr::docker_images()
 ```
 
 Search dockerhub for images: 
 
 
 ```{r echo=TRUE, message=TRUE, warning=TRUE}
-docker_search("rstudio")
+containr::docker_search("rocker")
 ```
 
 
@@ -157,7 +157,12 @@ docker_search("rstudio")
 
 ----
 
-There are similar packages available such as [dockr](https://github.com/smaakage85/dockr), [devindocker](https://github.com/ThinkR-open/devindocker), [containerit](https://github.com/o2r-project/containerit) and [stevedore](https://github.com/richfitz/stevedore) which provide various levels of functionality. We also recommend checking these out to see if these address your requirements. 
+There are similar packages available such as: 
+[dockr](https://github.com/smaakage85/dockr), 
+[devindocker](https://github.com/ThinkR-open/devindocker), 
+[harbor](https://github.com/wch/harbor)
+[containerit](https://github.com/o2r-project/containerit) and 
+[stevedore](https://github.com/richfitz/stevedore) which provide various levels of functionality. We also recommend checking these out to see if these address your requirements. 
 
 ### References 
 

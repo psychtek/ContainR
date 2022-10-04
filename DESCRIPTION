@@ -19,7 +19,8 @@ Imports:
     magrittr,
     crayon,
     sys,
-    processx
+    processx,
+    rlang
 Depends: 
     R (>= 3.5.0)
 LazyData: true

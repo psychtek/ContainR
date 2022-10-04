@@ -79,7 +79,7 @@ test_that("Docker commands return a tibble", {
     expect_type(docker_images(), "list")
     expect_s3_class(docker_images(), "tbl_df")
     expect_type(docker_search("rstudio"), "list")
-    expect_type(docker_containers(), "list")
+    expect_error(docker_containers(), "Nothing to return")
 
   },
     clean = TRUE)

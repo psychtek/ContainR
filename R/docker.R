@@ -15,34 +15,35 @@ docker <- R6::R6Class(
     #' @description
     #' Work in progress: Eventually will be part of the containr class.
     #'
-    #' @param process The system process. Plan is to add `podman` support but currently only
-    #' is setup for `docker`.
+    #' @param process The system process. Plan is to add `Podman` support but currently only
+    #' setup for `docker`. Although Podman commands are formatted in a similar context.
     #'
     #' @param commands The main docker commands. Currently support commands
-    #' are `images`, `container` and `search`.
+    #' are "image", "container", "search", "build", "history", "inspect".
     #'
-    #' @param options the `command` option arguments.
+    #' @param options the `command` option arguments or `image`
+    #'
+    #' @param args Additional arguments or flags for the docker commands
     #'
     #' @export
-    initialize = function(process = NA, commands = NA, options = NA) {
+    initialize = function(process = NA, commands = NULL, options = NULL, args = NULL) {
 
-      if (!is.character(process)) stop("process must be character")
-      if (!is.character(commands)) stop("commands must be character")
-      if (!is.character(options)) stop("options must be character")
       private$process = process
       private$commands = commands
       private$options = options
+      private$args = args
       private$process_check(process)
       private$commands_check(commands)
-      private$options_check(options)
-      private$docker_command_run(process, commands, options)
+      private$options_check(options, args)
+      private$format_cmd()
+      private$docker_command_run()
     },
 
     #' @description
     #' Prints the full command to the console for viewing.
     print = function() {
       cat(paste("|", cli::style_bold("Command:"),
-        paste(private$process, private$commands, private$options, collapse = " ")), "\n"
+        paste(private$process, private$commands, private$options, private$args)), "\n"
       )
       invisible(self)
     },
@@ -54,27 +55,13 @@ docker <- R6::R6Class(
     },
 
     #' @description
-    #' Displays a `tibble` of local images.
-    docker_images = function(){
-      private$docker_command_run(
-        process = "docker",
-        commands = "images",
-        options = "ls")$self$show_output()
-    },
-
-    #' @description
-    #' Displays a `tibble` of running containers.
-    docker_containers = function(){
-      private$docker_command_run(
-        process = "docker",
-        commands = "container",
-        options = "lst")$self$show_output()
+    #' Show the json in pretty format from the command
+    show_json = function(){
+      jsonlite::toJSON(private$json_format, pretty = TRUE)
     }
-
   ),
 
   # Private List ------------------------------------------------------------
-
 
   private = list(
 
@@ -82,48 +69,110 @@ docker <- R6::R6Class(
     commands = NULL,
     options = NULL,
     output = NULL,
-    columns = NULL,
+    args = NULL,
+    cmd_string = NULL,
+    json_format = NULL,
 
-    docker_command_run = function(process, commands, options){
-      format <- paste(paste0("{{.", private$columns, "}}"), collapse = "\t")
-      stdout <- processx::run(command = private$process,
-        args = c(private$commands, private$options, paste("--format=", format)),
-        echo = FALSE)$stdout
-
-      if (stdout != "") {
-        df <- utils::read.delim(text = stdout, sep = "\t", header = FALSE, stringsAsFactors = FALSE)
-        colnames(df) <- private$columns
-        private$output <- df
-        return(private$output)
-      } else {
-        purrr::map(private$columns, ~ character(0)) |>
-          purrr::set_names(private$columns)
-      }
+    format_cmd = function(){
+      cmd <- paste(private$process,
+        private$commands,
+        private$options,
+        ifelse(isTRUE(is.null(private$args)), "", private$args),
+        "--format '{{json .}}'")
+      private$cmd_string <- cmd
     },
 
+    docker_command_run = function(){
+
+      if(private$options %in% c("start", "stop", "pause", "unpause", "restart", "kill", "prune")){
+        private$run_nonformat()
+      } else {
+        private$run_formatted()
+      }
+
+    },
+
+    run_nonformat = function(){
+      cmd <- paste(private$process, private$commands, private$options, ifelse(isTRUE(is.null(private$args)), "", private$args))
+      private$cmd_string <- cmd
+      system(private$cmd_string)
+    },
+
+    run_formatted = function(){
+
+      json_format <- system(private$cmd_string, intern = TRUE)
+
+      if(length(json_format) == 0) {cli::cli_abort("Nothing to return")}
+
+      # Check the length of json string
+      if(length(json_format) > 1) {
+        data <- vector("list", length(json_format))
+
+        for(i in seq_along(json_format)){
+          data[[i]] <- jsonlite::fromJSON(json_format[[i]])
+        }
+
+        private$json_format <- data
+        # return results for string length > 1
+        df <- dplyr::tibble(data = list(data))
+        df <- df |>
+          tidyr::unnest_longer(data) |>
+          tidyr::unnest_wider(data)
+      } else {
+        df <- jsonlite::fromJSON(json_format)
+        private$json_format <- df
+        df <- dplyr::tibble(data = list(df))
+
+        df <- df |>
+          tidyr::unnest_wider(data)
+      }
+      private$output <- df
+
+    },
+
+    # System process
     process_check = function(process){
       private$process <- match.arg(process, c("docker", "podman"))
       return(private$process)
     },
 
+    # Supported docker commands
     commands_check = function(commands){
-      private$commands <- match.arg(commands, c("image", "container", "search", "build", "history"))
+      private$commands <- match.arg(commands, c("image", "container", "search", "history", "inspect"))
     },
 
-    options_check = function(options){
+    # Check arguments
+    options_check = function(options, args){
+
       if(private$commands %in% "image"){
-        private$options <- match.arg(options, c("build", "history", "inspect", "load", "ls", "prune", "pull", "rm", "save"))
-        private$columns <- c("Repository", "Tag", "ID", "CreatedSince", "Size")
+        private$options <- match.arg(options, c("list", "ls", "prune"))
+        private$args <- ifelse(isTRUE(is.null(private$args)),
+          "",
+          match.arg(args, c("--all", "--digests", "-a", "--quiet", "-q")))
+
       }
 
       if(private$commands %in% "container"){
-        private$options <- match.arg(options, c("attach", "start", "inspect", "stop", "ls", "kill"))
-        private$columns <- c("ID", "Image", "Command", "CreatedAt", "Status", "Names", "Labels", "Ports")
+
+        private$options <- match.arg(options, c("attach", "start", "inspect", "stop",
+          "ls", "kill", "list", "pause", "unpause", "restart"))
+
+        private$args <- args
+
       }
 
       if(private$commands %in% "search"){
-        private$columns <- c("Name", "Description", "StarCount", "IsOfficial", "IsAutomated")
+        private$options <- options
       }
+
+      if(private$commands %in% "inspect"){
+        private$options <- options
+      }
+
+      if(private$commands %in% "history"){
+        private$options <- options
+      }
+
       return(private$options)
     }
   )
@@ -133,12 +182,17 @@ docker <- R6::R6Class(
 # Docker functions  -----------------------------------------------------
 
 #' Docker Images
+#'
+#' @importFrom rlang .data
 #' @export
 docker_images <- function(){
 
-  docker$new(process = "docker",
+  dock_images <- docker$new(process = "docker",
     commands = "image",
     options = "ls")$show_output()
+
+  dock_images |>
+    dplyr::select(.data$Repository, .data$ID, .data$Tag, .data$Size)
 
 }
 
