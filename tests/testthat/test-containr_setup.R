@@ -73,13 +73,27 @@ test_that("Set config flags for docker build", {
 })
 
 
-test_that("Docker commands return a tibble", {
+test_that("Docker commands work", {
 
   withr::with_tempdir({
-    expect_type(docker_images(), "list")
-    expect_s3_class(docker_images(), "tbl_df")
-    expect_type(docker_search("rstudio"), "list")
-    expect_error(docker_containers(), "Nothing to return")
+
+    expect_type(docker$new(process = "docker",
+      commands = "info")$show_output(),
+      "list")
+
+    expect_s3_class(docker$new(process = "docker",
+      commands = "search",
+      options = "rstudio")$show_output(),
+      "tbl_df")
+
+    expect_type(docker$new(process = "docker",
+      commands = "info") $show_json(),
+      "character")
+
+    expect_error(docker$new(process = "docker",
+      commands = "image",
+      options = "ls"),
+      "Nothing to return")
 
   },
     clean = TRUE)

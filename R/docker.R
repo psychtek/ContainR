@@ -76,7 +76,8 @@ docker <- R6::R6Class(
     format_cmd = function(){
       cmd <- paste(private$process,
         private$commands,
-        private$options,
+        #private$options,
+        ifelse(isTRUE(is.null(private$options)), "", private$options),
         ifelse(isTRUE(is.null(private$args)), "", private$args),
         "--format '{{json .}}'")
       private$cmd_string <- cmd
@@ -84,9 +85,12 @@ docker <- R6::R6Class(
 
     docker_command_run = function(){
 
-      if(private$options %in% c("start", "stop", "pause", "unpause", "restart", "kill", "prune")){
+
+      if(private$commands %in% c("info") & isTRUE(is.null(private$options)) & isTRUE(is.null(private$args))) {
+        private$run_formatted()
+      } else if(private$options %in% c("start", "stop", "pause", "unpause", "restart", "kill") & isFALSE(is.null(private$args))){
         private$run_nonformat()
-      } else {
+      } else if(private$commands %in% c("image", "container", "search", "history", "inspect", "info")){
         private$run_formatted()
       }
 
@@ -138,14 +142,14 @@ docker <- R6::R6Class(
 
     # Supported docker commands
     commands_check = function(commands){
-      private$commands <- match.arg(commands, c("image", "container", "search", "history", "inspect"))
+      private$commands <- match.arg(commands, c("image", "container", "search", "history", "inspect", "info"))
     },
 
     # Check arguments
     options_check = function(options, args){
 
       if(private$commands %in% "image"){
-        private$options <- match.arg(options, c("list", "ls", "prune"))
+        private$options <- match.arg(options, c("list", "ls"))
         private$args <- ifelse(isTRUE(is.null(private$args)),
           "",
           match.arg(args, c("--all", "--digests", "-a", "--quiet", "-q")))
@@ -173,6 +177,11 @@ docker <- R6::R6Class(
         private$options <- options
       }
 
+      if(private$commands %in% "info"){
+        private$options <- options
+        private$args <- args
+      }
+
       return(private$options)
     }
   )
@@ -182,6 +191,8 @@ docker <- R6::R6Class(
 # Docker functions  -----------------------------------------------------
 
 #' Docker Images
+#'
+#' Display a table of images in the docker register
 #'
 #' @importFrom rlang .data
 #' @export
@@ -197,6 +208,8 @@ docker_images <- function(){
 }
 
 #' Docker Containers
+#'
+#' A table of running containers
 #'
 #' @export
 docker_containers <- function(){

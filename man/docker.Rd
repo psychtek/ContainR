@@ -29,8 +29,8 @@ Work in progress: Eventually will be part of the containr class.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{process}}{The system process. Plan is to add \code{podman} support but currently only
-is setup for \code{docker}.}
+\item{\code{process}}{The system process. Plan is to add \code{Podman} support but currently only
+setup for \code{docker}. Although Podman commands are formatted in a similar context.}
 
 \item{\code{commands}}{The main docker commands. Currently support commands
 are "image", "container", "search", "build", "history", "inspect".}

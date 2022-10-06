@@ -7,5 +7,5 @@
 docker_images()
 }
 \description{
-Docker Images
+Display a table of images in the docker register
 }

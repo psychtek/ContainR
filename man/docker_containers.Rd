@@ -7,5 +7,5 @@
 docker_containers()
 }
 \description{
-Docker Containers
+A table of running containers
 }
