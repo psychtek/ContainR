@@ -102,6 +102,10 @@ docker <- R6::R6Class(
       system(private$cmd_string)
     },
 
+    #' Formatting Function
+    #'
+    #' @importFrom tidyr unnest_longer unnest_wider
+    #' @importFrom jsonlite fromJSON
     run_formatted = function(){
 
       json_format <- system(private$cmd_string, intern = TRUE)

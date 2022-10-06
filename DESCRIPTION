@@ -20,7 +20,9 @@ Imports:
     crayon,
     sys,
     processx,
-    rlang
+    rlang,
+    jsonlite,
+    tidyr
 Depends: 
     R (>= 3.5.0)
 LazyData: true

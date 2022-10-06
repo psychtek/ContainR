@@ -67,6 +67,7 @@ Displays returned output in \code{tibble} format.
 \if{latex}{\out{\hypertarget{method-docker-show_json}{}}}
 \subsection{Method \code{show_json()}}{
 Show the json in pretty format from the command
+Formatting Function
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{docker$show_json()}\if{html}{\out{</div>}}
 }
