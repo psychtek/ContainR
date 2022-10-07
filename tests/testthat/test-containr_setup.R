@@ -90,11 +90,6 @@ test_that("Docker commands work", {
       commands = "info") $show_json(),
       "character")
 
-    expect_error(docker$new(process = "docker",
-      commands = "image",
-      options = "ls"),
-      "Nothing to return")
-
   },
     clean = TRUE)
 })
