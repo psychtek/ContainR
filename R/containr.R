@@ -59,6 +59,12 @@ containr <- R6::R6Class("containr",
     #' @field include_python Flag to install python using the rocker scripts
     include_python = NULL,
 
+    #' @field copy Hard copy working directory to build
+    copy = FALSE,
+
+    #' @field preview Preview the image with volume mounts of working directory
+    preview = TRUE,
+
     #' @field build Default is `FALSE`. Set to `TRUE` with the `build_image` fun.
     build = NULL,
 
@@ -90,28 +96,29 @@ containr <- R6::R6Class("containr",
     #' @param include_python Flag to install python using the rocker scripts \url{https://github.com/rocker-org/rocker-versioned2} which have had minor modifications. Future updates
     #' will see this streamlined. `Pandas` and `numpy` modules are also installed if this flag is set to `TRUE`.
     #'
-    #' @param DISABLE_AUTH Bypass authentication and show the R session.
+    #' @param copy Bypass authentication and show the R session.
     #' Defaults to TRUE and will login when the `launch()` function is invoked.
     #'
-    #' @param use_local If you want to port your local Rstudio session into the containr.
+    #' @param preview If you want to port your local Rstudio session into the containr.
     #' Defaults to `TRUE`.
     #'
     #' @param build This is the flag set to `FALSE` for when the settings are in place for the Docker process to build. View the
     #' current settings with the `print()` method and then `build_image(TRUE)` to start the process. This can take some time so grab a coffee.
-    initialize = function(image = NULL, name = NULL, tag = NULL, packages = NULL, dockerfile = NULL, include_python = NULL,
-      DISABLE_AUTH = TRUE, use_local = TRUE, build = FALSE){
+    initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL, include_python = FALSE,
+      copy = FALSE, preview = TRUE, build = FALSE){
 
       self$set_name(name)
       self$set_tag(tag)
       self$set_image(image)
-      self$set_local(use_local)
-      self$set_login(DISABLE_AUTH)
+      self$set_copy(copy)
+      self$set_preview(preview)
       self$set_python(include_python)
       self$set_dockerfile(dockerfile)
       self$set_packages(packages)
       private$setup_packages()
       private$create_dockerfile()
       self$build = build
+
     },
 
     #' @description
@@ -134,12 +141,13 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Change the containr name when launched. Defaults to active Rstudio project directory.
+    #' Name of the built image and used as container name when
+    #' the `run` command is flagged from the `start` command. Defaults to active project directory.
     #'
     #' @param name Character string of required name
     set_name = function(name){
       if(is.null(name)){
-        self$name <- tolower(basename(getwd()))
+        self$name <- tolower(basename(fs::path_wd()))
       } else {
         self$name <- tolower(name)
       }
@@ -202,18 +210,22 @@ containr <- R6::R6Class("containr",
     #' Flag to set the Rstudio login. When the `launch()` fun is run the browser will opeen and
     #' this setting bypasses the need for a password.
     #'
-    #' @param DISABLE_AUTH Set to enable the Rstudio Login. Set to `TRUE` until secure
+    #' @param copy Set to enable the Rstudio Login. Set to `TRUE` until secure
     #' env is setup.
-    set_login = function(DISABLE_AUTH){
-      private$DISABLE_AUTH <-  DISABLE_AUTH
+    set_copy = function(copy){
+      self$copy <- copy
+      private$COPY <-  self$copy
+      private$LOCAL_DIR <- fs::path_wd()
+      private$LOCAL_DIR_NAME <- basename(fs::path_wd())
     },
 
     #' @description
     #' Port local config and theme settings. Option setting to port the local
     #' config and panel settings into the container session.
-    #' @param use_local Flag `TRUE` to port local settings or `FALSE` for a clean session.
-    set_local = function(use_local){
-      private$use_local <-  use_local
+    #' @param preview Flag `TRUE` to port local settings or `FALSE` for a clean session.
+    set_preview = function(preview){
+      self$preview <- preview
+      private$PREV <-  self$preview
     },
 
     #' @description
@@ -339,17 +351,17 @@ containr <- R6::R6Class("containr",
           ifelse(isTRUE(self$build),
             cli::col_green(self$build),
             cli::col_yellow(self$build)), "\n",
-          "|", cli::style_bold("Auth:"),
-          if(isTRUE(private$DISABLE_AUTH)) {
-            cli::col_green(private$DISABLE_AUTH)
+          "|", cli::style_bold("Preview:"),
+          if(isTRUE(private$PREV)) {
+            cli::col_green(private$PREV)
           } else {
-            cli::col_yellow(private$DISABLE_AUTH)
+            cli::col_yellow(private$PREV)
           }, "\n",
-          "|", cli::style_bold("Local:"),
-          if(isTRUE(private$use_local)) {
-            cli::col_green(private$use_local)
+          "|", cli::style_bold("Copied:"),
+          if(isTRUE(private$COPY)) {
+            cli::col_green(private$COPY)
           } else {
-            cli::col_yellow(private$use_local)
+            cli::col_yellow(private$COPY)
           }, "\n"),
         "|", cli::style_bold("Dockerfile:"), cli::style_hyperlink("docker/Dockerfile", fs::path_real(private$containr_dockerfile)), "\n",
         c("|", cli::style_bold("Run Command:"), "\n",
@@ -374,8 +386,8 @@ containr <- R6::R6Class("containr",
 
     proj_name = NULL,
     proj_image = NULL,
-    DISABLE_AUTH = TRUE,
-    use_local = TRUE,
+    #DISABLE_AUTH = TRUE,
+    #use_local = TRUE,
     connected = FALSE,
     process = NULL,
     containr_pid = NULL,
@@ -389,6 +401,15 @@ containr <- R6::R6Class("containr",
     python_file = NULL,
     python_env = NULL,
     built_image = NULL,
+    COPY = FALSE,
+    PREV = TRUE,
+    AUTH = TRUE,
+    LOCAL_DIR = NULL,
+    LOCAL_DIR_NAME = NULL,
+    R_HOME_DIR = "/home/rstudio/",
+    R_CONFIG_DIR = "/home/rstudio/.config/rstudio",
+    R_ENV_DIR = "/home/rstudio/.Renviron",
+    R_PROF = "/home/rstudio/.Rprofile",
 
     # Build Process Functions -------------------------------------------------
 
@@ -396,10 +417,19 @@ containr <- R6::R6Class("containr",
 
       cli::cli_h2("Creating Dockerfile")
 
+      if(isTRUE(private$COPY)){
+        private$PREV <- FALSE
+        self$build <- FALSE
+      }
+
       # command layout for dockerfile
       docker_cmds <- paste(c(
         paste("FROM", private$containr_image),
         # TODO paste("LABEL", "label_name"),
+        paste(""),
+        if(isTRUE(private$COPY)){
+          paste("COPY", private$LOCAL_DIR, paste0(private$R_HOME_DIR, private$LOCAL_DIR_NAME))
+        },
         paste(""),
         if(isTRUE(private$containr_include_python)) {
           c(
@@ -627,36 +657,43 @@ containr <- R6::R6Class("containr",
     setup_command = function(){
 
       private$setup_config()
-      # set volume mounts
-      r_dir <- paste0(fs::path_wd(), ":/home/rstudio/", basename(fs::path_wd()))
-      r_config <- paste0(fs::path_home_r(), "/.config/rstudio")
-      r_env <- paste0(fs::path_home_r(), "/.Renviron")
-      r_prof <- private$containr_config
+      AUTH <-  private$AUTH
+      PREV <- private$PREV
 
-      r_config <- paste0(r_config, ":/home/rstudio/.config/rstudio", collapse = "")
-      r_env <- paste0(r_env, ":/home/rstudio/.Renviron", collapse = "")
-      r_prof <- paste0(r_prof, ":/home/rstudio/.Rprofile", collapse = "")
+      # Local options
+      LOCAL_DIR <- private$LOCAL_DIR
+      LOCAL_DIR_NAME <- private$LOCAL_DIR_NAME
+      LOCAL_R_PROF <- private$containr_config
+      LOCAL_R_HOME <- paste0(fs::path_home_r(), "/.config/rstudio")
+      LOCAL_RENV <-  paste0(fs::path_home_r(), "/.Renviron")
 
-      if(isTRUE({{private$use_local}})){
-        vols <- c(r_dir, r_config, r_env, r_prof)
-        volumes <- unlist(purrr::map(vols, function(x) c("-v", x)))
-      } else {
-        volumes <- c("-v", paste0(r_dir))
-      }
 
-      # set ports
-      ports <- c("-p", "127.0.0.1:8787:8787")
+      CMD_OPTS = c("run", "--rm")
+      HOST = "127.0.0.1"
+      PORTS = "8787:8787"
 
-      # set options
-      # removed -it dur to "the input device is not a TTY"
-      # more here: https://stackoverflow.com/questions/43099116/error-the-input-device-is-not-a-tty
-      docker_opts <- c("run", "--rm")
-      set_env <- c("-e", paste0("DISABLE_AUTH=", ifelse(isTRUE({{private$DISABLE_AUTH}}), {{private$DISABLE_AUTH}}, "FALSE")))
-      set_name <- c("--name", private$containr_name)
-      image_name <- c(private$built_image)
+      CONTAINR_NAME = LOCAL_DIR_NAME
+      IMG_NAME = private$containr_image
+
+      vol_paths <- c(paste0(LOCAL_DIR, ":", private$R_HOME_DIR, LOCAL_DIR_NAME),
+        paste0(LOCAL_R_HOME, ":", private$R_CONFIG_DIR),
+        paste0(LOCAL_RENV, ":", private$R_ENV_DIR),
+        paste0(LOCAL_R_PROF, ":", private$R_PROF))
+
+      VOLUMES <- unlist(purrr::map(vol_paths, function(x) c("-v", x)))
+
 
       # Argument string for docker
-      proc_args <- c(docker_opts, set_env, ports, volumes, set_name, image_name)
+      proc_args <- c(CMD_OPTS,
+        "-e", paste0("DISABLE_AUTH=", AUTH),
+        "-p", paste0(HOST, ":", PORTS),
+        if(isFALSE(PREV)){
+          NULL
+        } else {
+          VOLUMES
+        },
+        "--name", private$containr_name,
+        IMG_NAME)
 
       return(proc_args)
     },
