@@ -447,7 +447,6 @@ containr <- R6::R6Class("containr",
     containr_image_run_mode = NULL,
     containr_dockerfile = NULL,
     containr_packages = NULL,
-    containr_include_python = FALSE,
     python_file = NULL,
     python_env = NULL,
     built_image = NULL,
@@ -461,8 +460,6 @@ containr <- R6::R6Class("containr",
     R_CONFIG_DIR = "/home/rstudio/.config/rstudio",
     R_ENV_DIR = "/home/rstudio/.Renviron",
     R_PROF = "/home/rstudio/.Rprofile",
-    python = "install_python.sh,",
-    pyenv = "install_pyenv.sh",
     inst_dockerfile = NULL,
     inc_py = TRUE,
     inc_pyenv = TRUE,
@@ -480,8 +477,6 @@ containr <- R6::R6Class("containr",
     # Build Process Functions -------------------------------------------------
 
     create_dockerfile = function(){
-
-      cli::cli_h2("Creating Dockerfile")
 
       set_add_flags <-  dplyr::tibble(
         include_py     = private$inc_py,
