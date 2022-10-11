@@ -395,9 +395,9 @@ containr <- R6::R6Class("containr",
           }, "\n",
           "|", cli::style_bold("Base Image:"), private$containr_image, "\n",
           "|", cli::style_bold("Packages:"), private$containr_packages, "\n",
-          "|", cli::style_bold("Included:"),
           if(isTRUE(any(private$included))) {
-            paste(names(private$included))
+            paste("|", cli::style_bold("Included:"),
+                  paste0(names(private$included), collapse = ", "))
           }, "\n",
           "|", cli::style_bold("Built:"),
           ifelse(isTRUE(self$build),
@@ -509,7 +509,9 @@ containr <- R6::R6Class("containr",
       pandoc = "install_pandoc.sh"
 
       flagged <- set_add_flags |> dplyr::select(where(~any(isTRUE(.))))
-      private$included <- flagged
+      private$included <- flagged |>
+        dplyr::select(where(~any(isTRUE(.)))) |>
+        dplyr::rename_with(~ tolower(gsub("include_", "", .x, fixed = TRUE)))
 
       if(isTRUE(private$COPY)){
         private$PREV <- FALSE
