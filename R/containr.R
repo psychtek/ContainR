@@ -56,9 +56,6 @@ containr <- R6::R6Class("containr",
     #' @field dockerfile Location of the dockerfile. Is set to `docker/Dockerfile/` directory.
     dockerfile = NULL,
 
-    #' @field include_python Flag to install python using the rocker scripts
-    include_python = NULL,
-
     #' @field copy Hard copy working directory to build
     copy = FALSE,
 
@@ -67,6 +64,28 @@ containr <- R6::R6Class("containr",
 
     #' @field build Default is `FALSE`. Set to `TRUE` with the `build_image` fun.
     build = NULL,
+
+    include_py = FALSE,
+
+    include_pyenv = FALSE,
+
+    include_tensor = FALSE,
+
+    include_geo = FALSE,
+
+    include_quarto = FALSE,
+
+    include_tex = FALSE,
+
+    include_julia = FALSE,
+
+    include_jupyter = FALSE,
+
+    include_tidy = FALSE,
+
+    include_verse = FALSE,
+
+    include_pandoc = FALSE,
 
     #' Start a ContainR
     #'
@@ -104,21 +123,51 @@ containr <- R6::R6Class("containr",
     #'
     #' @param build This is the flag set to `FALSE` for when the settings are in place for the Docker process to build. View the
     #' current settings with the `print()` method and then `build_image(TRUE)` to start the process. This can take some time so grab a coffee.
-    initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL, include_python = FALSE,
-      copy = FALSE, preview = TRUE, build = FALSE){
+    initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL,
+      copy = FALSE, preview = TRUE, build = FALSE, include_py = FALSE, include_pyenv = FALSE,
+      include_tensor = FALSE, include_geo = FALSE, include_quarto = FALSE, include_tex = FALSE, include_julia = FALSE,
+      include_jupyter = FALSE, include_tidy = FALSE, include_verse = FALSE, include_pandoc = FALSE){
 
       self$set_name(name)
       self$set_tag(tag)
       self$set_image(image)
       self$set_copy(copy)
       self$set_preview(preview)
-      self$set_python(include_python)
+
+      self$include_py = include_py
+      self$include_pyenv = include_pyenv
+      self$include_tensor = include_tensor
+      self$include_geo = include_geo
+      self$include_quarto = include_quarto
+      self$include_tex = include_tex
+      self$include_julia = include_julia
+      self$include_jupyter = include_jupyter
+      self$include_tidy = include_tidy
+      self$include_verse = include_verse
+      self$include_pandoc = include_pandoc
+
+      self$set_flags()
+      #self$set_python(include_python)
       self$set_dockerfile(dockerfile)
       self$set_packages(packages)
       private$setup_packages()
       private$create_dockerfile()
       self$build = build
 
+    },
+
+    set_flags = function(){
+      private$inc_py     = self$include_py
+      private$inc_pyenv  = self$include_pyenv
+      private$inc_tensor = self$include_tensor
+      private$inc_geo    = self$include_geo
+      private$inc_quarto = self$include_quarto
+      private$inc_tex    = self$include_tex
+      private$inc_julia  = self$include_julia
+      private$inc_jupyter = self$include_jupyter
+      private$inc_tidy   = self$include_tidy
+      private$inc_verse  = self$include_verse
+      private$inc_pandoc = self$include_pandoc
     },
 
     #' @description
@@ -293,7 +342,7 @@ containr <- R6::R6Class("containr",
     #' @description
     #' Displays the process information of the active containr.
     proc = function(){
-      cli::cli_h1("<Process>")
+      cli::cli_h1("Process")
       cat(paste(
         "<", cli::style_bold("ID:"),
         if(isTRUE(self$status() == "Running")) {
@@ -332,7 +381,7 @@ containr <- R6::R6Class("containr",
     #' `containr$info()` shows some information about the
     #' process on the screen, whether it is running and it's process id, etc.
     print = function(){
-      cli::cli_h1("<ContainR>")
+      cli::cli_h1("ContainR")
 
       cat(
         " |", cli::style_bold("Project:"), private$containr_name, "\n",
@@ -346,7 +395,10 @@ containr <- R6::R6Class("containr",
           }, "\n",
           "|", cli::style_bold("Base Image:"), private$containr_image, "\n",
           "|", cli::style_bold("Packages:"), private$containr_packages, "\n",
-          "|", cli::style_bold("Python:"), private$containr_include_python, "\n",
+          "|", cli::style_bold("Included:"),
+          if(isTRUE(any(private$included))) {
+            paste(names(private$included))
+          }, "\n",
           "|", cli::style_bold("Built:"),
           ifelse(isTRUE(self$build),
             cli::col_green(self$build),
@@ -365,7 +417,7 @@ containr <- R6::R6Class("containr",
           }, "\n"),
         "|", cli::style_bold("Dockerfile:"), cli::style_hyperlink("docker/Dockerfile", fs::path_real(private$containr_dockerfile)), "\n",
         c("|", cli::style_bold("Run Command:"), "\n",
-          cli::style_italic(private$setup_command())), "\n")
+          cli::style_italic(private$setup_command())), "\n", "\n", private$inst_dockerfile)
 
       invisible(self)
     },
@@ -386,8 +438,6 @@ containr <- R6::R6Class("containr",
 
     proj_name = NULL,
     proj_image = NULL,
-    #DISABLE_AUTH = TRUE,
-    #use_local = TRUE,
     connected = FALSE,
     process = NULL,
     containr_pid = NULL,
@@ -404,12 +454,28 @@ containr <- R6::R6Class("containr",
     COPY = FALSE,
     PREV = TRUE,
     AUTH = TRUE,
+    package = NULL,
     LOCAL_DIR = NULL,
     LOCAL_DIR_NAME = NULL,
     R_HOME_DIR = "/home/rstudio/",
     R_CONFIG_DIR = "/home/rstudio/.config/rstudio",
     R_ENV_DIR = "/home/rstudio/.Renviron",
     R_PROF = "/home/rstudio/.Rprofile",
+    python = "install_python.sh,",
+    pyenv = "install_pyenv.sh",
+    inst_dockerfile = NULL,
+    inc_py = TRUE,
+    inc_pyenv = TRUE,
+    inc_tensor = TRUE,
+    inc_geo = TRUE,
+    inc_quarto = TRUE,
+    inc_tex = TRUE,
+    inc_julia = TRUE,
+    inc_jupyter = TRUE,
+    inc_tidy = TRUE,
+    inc_verse = TRUE,
+    inc_pandoc = TRUE,
+    included = NULL,
 
     # Build Process Functions -------------------------------------------------
 
@@ -417,37 +483,47 @@ containr <- R6::R6Class("containr",
 
       cli::cli_h2("Creating Dockerfile")
 
+      set_add_flags <-  dplyr::tibble(
+        include_py     = private$inc_py,
+        include_pyenv  = private$inc_pyenv,
+        include_tensor = private$inc_tensor,
+        include_geo    = private$inc_geo,
+        include_quarto = private$inc_quarto,
+        include_tex    = private$inc_tex,
+        include_julia  = private$inc_julia,
+        include_jupyter = private$inc_jupyter,
+        include_tidy   = private$inc_tidy,
+        include_verse  = private$inc_verse,
+        include_pandoc = private$inc_pandoc)
+
+      python = "install_python.sh"
+      pyenv = "install_pyenv.sh"
+      tensor = "install_tensorflow.sh"
+      geospatial = "install_geospatial.sh"
+      quarto = "install_quarto.sh"
+      texlive = "install_texlive.sh"
+      julia = "install_julia.sh"
+      jupyter = "install_jupyter.sh"
+      tidyverse = "install_tidyverse.sh"
+      verse = "install_verse.sh"
+      pandoc = "install_pandoc.sh"
+
+      flagged <- set_add_flags |> dplyr::select(where(~any(isTRUE(.))))
+      private$included <- flagged
+
       if(isTRUE(private$COPY)){
         private$PREV <- FALSE
         self$build <- FALSE
+        file.copy(from = private$package,
+                  to = "docker")
       }
-
       # command layout for dockerfile
       docker_cmds <- paste(c(
+        paste("# Created by ContainR package with RockerVersioned2"),
         paste("FROM", private$containr_image),
-        # TODO paste("LABEL", "label_name"),
         paste(""),
-        if(isTRUE(private$COPY)){
-          paste("COPY", private$LOCAL_DIR, paste0(private$R_HOME_DIR, private$LOCAL_DIR_NAME))
-        },
-        paste(""),
-        if(isTRUE(private$containr_include_python)) {
-          c(
-            paste("COPY", private$python_file, "/tmp/"),
-            paste(""),
-            paste("COPY", private$python_env, "/tmp/"),
-            paste(""),
-            paste("RUN", "chmod +x /tmp/install_python.sh"),
-            paste(""),
-            paste("RUN", "chmod +x /tmp/install_pyenv.sh"),
-            paste(""),
-            paste("RUN", "/tmp/install_python.sh"),
-            paste(""),
-            paste("RUN", "/tmp/install_pyenv.sh"),
-            paste(""),
-            paste("RUN", "R -e \"reticulate::py_config()\""),
-            paste("")
-          )
+        if(isTRUE(any(flagged))) {
+          c(glue::glue("RUN /rocker_Scripts/{names(flagged)}"))
         },
         paste(""),
         if(private$containr_packages %in% c("loaded", "installed")){
@@ -457,11 +533,22 @@ containr <- R6::R6Class("containr",
             paste(""),
             paste("RUN", "/tmp/install_additional.sh"))
         },
+        paste(""),
+        if(isTRUE(private$COPY)){
+          c(paste("RUN mkdir /home/rstudio/containr"),
+            paste(""),
+            paste("WORKDIR /home/rstudio"),
+            paste(""),
+            paste("COPY", paste0("./docker/", basename(private$package)), "."),
+            paste(""),
+            paste("RUN tar -xvzf ", "/home/rstudio/containr_0.1.5.9000.tar.gz"))
+        },
         paste("")
       ),
-        collapse = "\n")
+      collapse = "\n")
 
       writeLines(docker_cmds, con = private$containr_dockerfile, sep = "")
+      private$inst_dockerfile <- docker_cmds
 
       if(isTRUE(file.exists(private$containr_dockerfile))){
         cli::cli_alert_success("Dockerfile saved to: {.path {private$containr_dockerfile}}")
@@ -593,6 +680,12 @@ containr <- R6::R6Class("containr",
 
     create_directories = function(){
 
+      if(isTRUE(private$COPY)){
+        pack_dir <- tempdir()
+        private$package <- devtools::build(".",
+                                   path = pack_dir)
+      }
+
       if(!fs::dir_exists("docker")) {
         fs::dir_create("docker")
       }
@@ -609,32 +702,6 @@ containr <- R6::R6Class("containr",
 
       if(!fs::file_exists("docker/Dockerfile")) {
         fs::file_create("docker/Dockerfile")
-      }
-
-      if(isTRUE(private$containr_include_python)) {
-        fs::dir_create("docker/scripts")
-        inst_python <- "/install_python.sh"
-        tmp_dir <- tempdir()
-        inst_python_dest <- paste0(tmp_dir, inst_python)
-        curl::curl_download(url = "https://raw.githubusercontent.com/rocker-org/rocker-versioned2/master/scripts/install_python.sh",
-          destfile = inst_python_dest,
-          mode = "wb",
-          quiet = FALSE)
-        file.copy(inst_python_dest, "docker/scripts")
-        private$python_file = "docker/scripts/install_python.sh"
-      }
-
-      if(isTRUE(private$containr_include_python)) {
-        fs::dir_create("docker/scripts")
-        inst_pyenv <- "/install_pyenv.sh"
-        tmp_dir <- tempdir()
-        inst_pyenv_dest <- paste0(tmp_dir, inst_pyenv)
-        curl::curl_download(url = "https://raw.githubusercontent.com/rocker-org/rocker-versioned2/master/scripts/install_pyenv.sh",
-          destfile = inst_pyenv_dest,
-          mode = "wb",
-          quiet = FALSE)
-        file.copy(inst_pyenv_dest, "docker/scripts")
-        private$python_env = "docker/scripts/install_pyenv.sh"
       }
 
     },
@@ -681,7 +748,6 @@ containr <- R6::R6Class("containr",
         paste0(LOCAL_R_PROF, ":", private$R_PROF))
 
       VOLUMES <- unlist(purrr::map(vol_paths, function(x) c("-v", x)))
-
 
       # Argument string for docker
       proc_args <- c(CMD_OPTS,
