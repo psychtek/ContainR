@@ -63,7 +63,7 @@ containr <- R6::R6Class("containr",
     preview = TRUE,
 
     #' @field build Default is `FALSE`. Set to `TRUE` with the `build_image` fun.
-    build = NULL,
+    build = FALSE,
 
     include_py = FALSE,
 
@@ -112,16 +112,13 @@ containr <- R6::R6Class("containr",
     #' to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
     #' an active project into a **Rstudio** container from one of the Rocker images: \url{https://rocker-project.org/images/}.
     #'
-    #' @param include_python Flag to install python using the rocker scripts \url{https://github.com/rocker-org/rocker-versioned2} which have had minor modifications. Future updates
-    #' will see this streamlined. `Pandas` and `numpy` modules are also installed if this flag is set to `TRUE`.
-    #'
     #' @param copy Bypass authentication and show the R session.
     #' Defaults to TRUE and will login when the `launch()` function is invoked.
     #'
     #' @param preview If you want to port your local Rstudio session into the containr.
     #' Defaults to `TRUE`.
     #'
-    #' @param build This is the flag set to `FALSE` for when the settings are in place for the Docker process to build. View the
+    #' @param build_image This is the flag set to `FALSE` for when the settings are in place for the Docker process to build. View the
     #' current settings with the `print()` method and then `build_image(TRUE)` to start the process. This can take some time so grab a coffee.
     initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL,
       copy = FALSE, preview = TRUE, build = FALSE, include_py = FALSE, include_pyenv = FALSE,
@@ -147,7 +144,6 @@ containr <- R6::R6Class("containr",
       self$include_pandoc = include_pandoc
 
       self$set_flags()
-      #self$set_python(include_python)
       self$set_dockerfile(dockerfile)
       self$set_packages(packages)
       private$setup_packages()
@@ -172,7 +168,7 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' Set or change the base image name to build off. Additional flags can be set to
-    #' to include python with `include_python()` function/
+    #' to include python with `include_` function/
     #'
     #' @param image Set base image name using `c("rstudio", "tidyverse", "verse", "geospatial", "binder")`.
     set_image = function(image){
@@ -244,16 +240,12 @@ containr <- R6::R6Class("containr",
       return(private$containr_packages)
     },
 
-    #' @description
-    #' If to install python on the image. These make use of the rocker scripts
-    #' by using the raw scripts from rocker-versioned2.
-    #'
-    #' @param include_python Flag `TRUE` or `FALSE` if to include python
-    set_python = function(include_python){
-      self$include_python <- include_python
-      private$containr_include_python <- self$include_python
-      return(private$containr_include_python)
-    },
+
+    #' set_python = function(include_python){
+    #'   self$include_python <- include_python
+    #'   private$containr_include_python <- self$include_python
+    #'   return(private$containr_include_python)
+    #' },
 
     #' @description
     #' Flag to set the Rstudio login. When the `launch()` fun is run the browser will opeen and
@@ -320,7 +312,7 @@ containr <- R6::R6Class("containr",
       }
       # TODO set for false builds
       self$build <- build
-      if(isTRUE(self$build)){
+      if(isTRUE(build)){
         processx::run(command = "docker",
           args = c("build",
             "--no-cache=true",
@@ -383,41 +375,50 @@ containr <- R6::R6Class("containr",
     print = function(){
       cli::cli_h1("ContainR")
 
-      cat(
-        " |", cli::style_bold("Project:"), private$containr_name, "\n",
-        paste("|", cli::style_bold("Status:"),
-          if(isTRUE(self$status() == "Running")) {
-            cli::col_green("Running")
-          } else if(isFALSE(self$status() == "Not Running")){
-            cli::col_red("Not Running")
-          } else {
-            cli::col_yellow("Not Started")
-          }, "\n",
-          "|", cli::style_bold("Base Image:"), private$containr_image, "\n",
-          "|", cli::style_bold("Packages:"), private$containr_packages, "\n",
-          if(isTRUE(any(private$included))) {
-            paste("|", cli::style_bold("Included:"),
-                  paste0(names(private$included), collapse = ", "))
-          }, "\n",
-          "|", cli::style_bold("Built:"),
-          ifelse(isTRUE(self$build),
-            cli::col_green(self$build),
-            cli::col_yellow(self$build)), "\n",
-          "|", cli::style_bold("Preview:"),
-          if(isTRUE(private$PREV)) {
-            cli::col_green(private$PREV)
-          } else {
-            cli::col_yellow(private$PREV)
-          }, "\n",
-          "|", cli::style_bold("Copied:"),
-          if(isTRUE(private$COPY)) {
-            cli::col_green(private$COPY)
-          } else {
-            cli::col_yellow(private$COPY)
-          }, "\n"),
-        "|", cli::style_bold("Dockerfile:"), cli::style_hyperlink("docker/Dockerfile", fs::path_real(private$containr_dockerfile)), "\n",
-        c("|", cli::style_bold("Run Command:"), "\n",
-          cli::style_italic(private$setup_command())), "\n", "\n", private$inst_dockerfile)
+      cli::cli_dl(c(
+        "{.strong | Project}" = cli::col_green(private$containr_name),
+
+        "{.strong | Status}" = if(isTRUE(self$status() == "Running")) {
+          cli::col_green(self$status())
+        } else if(isFALSE(self$status() == "Not Running")){
+          cli::col_red(self$status())
+        } else {
+          cli::col_yellow("Not Started")
+        },
+
+        "{.strong | Base Image}" = private$containr_image,
+
+        "{.strong | Packages}" =  private$containr_packages,
+
+        "{.strong | Includes}" = if(isTRUE(any(private$included))) {
+          paste0(names(private$included), collapse = ", ")
+        } else {
+          "None"
+        },
+
+        "{.strong | Preview}" = if(isTRUE(private$PREV)) {
+          cli::col_green("On")
+        } else {
+          cli::col_yellow("Off")
+        },
+
+        "{.strong | Copied}" = if(isTRUE(private$COPY)) {
+          cli::col_green(private$COPY)
+        } else {
+          cli::col_yellow(private$COPY)
+        },
+
+        "{.strong | Build Status}" = ifelse(isTRUE(self$build),
+          cli::col_green(self$build),
+          cli::col_yellow(self$build)),
+
+        "{.strong | Dockerfile}" = cli::style_hyperlink("{.file docker/Dockerfile}",
+          fs::path_real(private$containr_dockerfile)),
+
+        "{.strong Run Command}",
+
+        "{.strong | -}" = private$setup_command()
+      ))
 
       invisible(self)
     },
@@ -447,9 +448,10 @@ containr <- R6::R6Class("containr",
     containr_image_run_mode = NULL,
     containr_dockerfile = NULL,
     containr_packages = NULL,
-    python_file = NULL,
-    python_env = NULL,
-    built_image = NULL,
+    #build_status = NULL,
+    #python_file = NULL,
+    #python_env = NULL,
+    #built_image = NULL,
     COPY = FALSE,
     PREV = TRUE,
     AUTH = TRUE,
@@ -510,9 +512,9 @@ containr <- R6::R6Class("containr",
 
       if(isTRUE(private$COPY)){
         private$PREV <- FALSE
-        self$build <- FALSE
-        file.copy(from = private$package,
-                  to = "docker")
+        self$build <- FALSE # Reset
+        # file.copy(from = private$package,
+        #   to = "docker")
       }
       # command layout for dockerfile
       docker_cmds <- paste(c(
@@ -520,7 +522,7 @@ containr <- R6::R6Class("containr",
         paste("FROM", private$containr_image),
         paste(""),
         if(isTRUE(any(flagged))) {
-          c(glue::glue("RUN /rocker_Scripts/{names(flagged)}"))
+          c(glue::glue("RUN /rocker_scripts/{names(flagged)}")) # TODO need to pass script string
         },
         paste(""),
         if(private$containr_packages %in% c("loaded", "installed")){
@@ -542,20 +544,23 @@ containr <- R6::R6Class("containr",
         },
         paste("")
       ),
-      collapse = "\n")
+        collapse = "\n")
 
-      writeLines(docker_cmds, con = private$containr_dockerfile, sep = "")
+      writeLines(docker_cmds,
+        con = private$containr_dockerfile,
+        sep = "")
       private$inst_dockerfile <- docker_cmds
 
       if(isTRUE(file.exists(private$containr_dockerfile))){
-        cli::cli_alert_success("Dockerfile saved to: {.path {private$containr_dockerfile}}")
+        cli::cli_alert_success("Dockerfile saved to: {.file {private$containr_dockerfile}}")
       }
     },
 
     setup_packages = function(){
       packages <- private$containr_packages
       bash_file <- "docker/scripts/install_additional.sh"
-
+      # TODO set packages option to use renv file
+      # TODO set packages to install from description
       if(packages %in% "none"){
         private$reset_dir()
         private$create_directories()
@@ -670,21 +675,31 @@ containr <- R6::R6Class("containr",
 
         if(length(readLines(bash_file)) > 0){
           fs::dir_tree("docker")
-          cli::cli_alert_success("Package Installs file updated: {.path {bash_file}}")
+          cli::cli_alert_success("Package Installs Script Updated: {.path {bash_file}}")
         }
       }
     },
 
     create_directories = function(){
 
-      if(isTRUE(private$COPY)){
-        pack_dir <- tempdir()
-        private$package <- devtools::build(".",
-                                   path = pack_dir)
-      }
-
       if(!fs::dir_exists("docker")) {
         fs::dir_create("docker")
+      }
+      # TODO add a metadata function using stored settings and file like packaged <- fs::file_info(get_tar_file)
+      if(isTRUE(private$COPY)){
+        pack_dir <- fs::path_temp()
+        private$package <- devtools::build(".",
+          path = pack_dir, vignettes = FALSE)
+
+        fs::file_copy(path = private$package,
+          new_path = "docker", overwrite = TRUE)
+
+        get_tar_file <- list.files("docker", pattern = ".tar.gz$", full.names = TRUE)
+        if(isTRUE(fs::file_exists(get_tar_file))) {
+          packaged <- fs::file_info(get_tar_file)
+          cli::cli_alert_success("Archived Project Saved: {.file {get_tar_file}}")
+        }
+
       }
 
       if(private$containr_packages %in% c("loaded", "installed")){
@@ -717,7 +732,10 @@ containr <- R6::R6Class("containr",
       private$containr_config <-  create_config_file(proj_name)
     },
 
-    # Setup the docker command string
+    # RStudio Server’s configuration files are saved to: ~/.config/rstudio/ directory
+    # not recommended to bind-mount directory on the container (/home/rstudio)
+    # RStudio Server opens the user’s home directory (/home/rstudio) by default
+    # Use working directory is set up under /home/rstudio, e.g. /home/rstudio/workspace
     setup_command = function(){
 
       private$setup_config()
@@ -737,7 +755,8 @@ containr <- R6::R6Class("containr",
       PORTS = "8787:8787"
 
       CONTAINR_NAME = LOCAL_DIR_NAME
-      IMG_NAME = private$containr_image
+      IMG_NAME = glue::glue(private$containr_image)
+      # TODO setup to allow for different tag objects. One for image build and one for rocker versions
 
       vol_paths <- c(paste0(LOCAL_DIR, ":", private$R_HOME_DIR, LOCAL_DIR_NAME),
         paste0(LOCAL_R_HOME, ":", private$R_CONFIG_DIR),
@@ -755,8 +774,8 @@ containr <- R6::R6Class("containr",
         } else {
           VOLUMES
         },
-        "--name", private$containr_name,
-        IMG_NAME)
+        "--name", private$containr_name, # The name of the container to run, can be anaything but set to proj name
+        IMG_NAME) # Set per project
 
       return(proc_args)
     },
