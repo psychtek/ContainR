@@ -328,7 +328,7 @@ containr <- R6::R6Class("containr",
         cli::cli_alert_success("Success!")
       }
       self$build <- TRUE
-      private$built_image <- private$containr_name
+      private$containr_image <- private$containr_name
     },
 
     #' @description
@@ -390,8 +390,8 @@ containr <- R6::R6Class("containr",
 
         "{.strong | Packages}" =  private$containr_packages,
 
-        "{.strong | Includes}" = if(isTRUE(any(private$included))) {
-          paste0(names(private$included), collapse = ", ")
+        "{.strong | Includes}" = if(length(private$included) > 0) {
+          paste0(private$scripts, collapse = ", ")
         } else {
           "None"
         },
@@ -417,7 +417,9 @@ containr <- R6::R6Class("containr",
 
         "{.strong Run Command}",
 
-        "{.strong | -}" = private$setup_command()
+        "{.strong | -}" = private$setup_command(),
+
+        "{.strong | Docker Layers}" = cli::style_italic(private$inst_dockerfile)
       ))
 
       invisible(self)
@@ -451,7 +453,7 @@ containr <- R6::R6Class("containr",
     #build_status = NULL,
     #python_file = NULL,
     #python_env = NULL,
-    #built_image = NULL,
+    built_image = NULL,
     COPY = FALSE,
     PREV = TRUE,
     AUTH = TRUE,
@@ -475,75 +477,62 @@ containr <- R6::R6Class("containr",
     inc_verse = TRUE,
     inc_pandoc = TRUE,
     included = NULL,
+    scripts = NULL,
 
     # Build Process Functions -------------------------------------------------
 
     create_dockerfile = function(){
 
-      set_add_flags <-  dplyr::tibble(
-        include_py     = private$inc_py,
-        include_pyenv  = private$inc_pyenv,
-        include_tensor = private$inc_tensor,
-        include_geo    = private$inc_geo,
-        include_quarto = private$inc_quarto,
-        include_tex    = private$inc_tex,
-        include_julia  = private$inc_julia,
-        include_jupyter = private$inc_jupyter,
-        include_tidy   = private$inc_tidy,
-        include_verse  = private$inc_verse,
-        include_pandoc = private$inc_pandoc)
+      set_add_flags <- dplyr::tibble(
+        include = c("python", "pyenv", "tensor", "geospatial", "quarto",
+                    "texlive", "julia", "jupyter", "tidyverse", "verse", "pandoc"),
+        flag = c(private$inc_py, private$inc_pyenv, private$inc_tensor, private$inc_geo,
+                 private$inc_quarto, private$inc_tex, private$inc_julia, private$inc_jupyter,
+                 private$inc_tidy, private$inc_verse, private$inc_pandoc),
+        string = c("install_python.sh", "install_pyenv.sh", "install_tensorflow.sh", "install_geospatial.sh",
+                   "install_quarto.sh", "install_texlive.sh", "install_julia.sh", "install_jupyter.sh",
+                   "install_tidyverse.sh", "install_verse.sh", "install_pandoc.sh"))
 
-      python = "install_python.sh"
-      pyenv = "install_pyenv.sh"
-      tensor = "install_tensorflow.sh"
-      geospatial = "install_geospatial.sh"
-      quarto = "install_quarto.sh"
-      texlive = "install_texlive.sh"
-      julia = "install_julia.sh"
-      jupyter = "install_jupyter.sh"
-      tidyverse = "install_tidyverse.sh"
-      verse = "install_verse.sh"
-      pandoc = "install_pandoc.sh"
+      flagged <- set_add_flags |>
+        dplyr::filter(if_any("flag", ~ . == TRUE ))
 
-      flagged <- set_add_flags |> dplyr::select(where(~any(isTRUE(.))))
-      private$included <- flagged |>
-        dplyr::select(where(~any(isTRUE(.)))) |>
-        dplyr::rename_with(~ tolower(gsub("include_", "", .x, fixed = TRUE)))
+      private$scripts <- flagged |>
+        purrr::pluck("include")
 
       if(isTRUE(private$COPY)){
         private$PREV <- FALSE
         self$build <- FALSE # Reset
-        # file.copy(from = private$package,
-        #   to = "docker")
       }
       # command layout for dockerfile
-      docker_cmds <- paste(c(
-        paste("# Created by ContainR package with RockerVersioned2"),
-        paste("FROM", private$containr_image),
-        paste(""),
-        if(isTRUE(any(flagged))) {
-          c(glue::glue("RUN /rocker_scripts/{names(flagged)}")) # TODO need to pass script string
-        },
-        paste(""),
-        if(private$containr_packages %in% c("loaded", "installed")){
-          c(paste("COPY /docker/scripts/install_additional.sh /tmp/"),
-            paste(""),
-            paste("RUN chmod +x /tmp/install_additional.sh"),
-            paste(""),
-            paste("RUN", "/tmp/install_additional.sh"))
-        },
-        paste(""),
-        if(isTRUE(private$COPY)){
-          c(paste("RUN mkdir /home/rstudio/containr"),
-            paste(""),
-            paste("WORKDIR /home/rstudio"),
-            paste(""),
-            paste("COPY", paste0("./docker/", basename(private$package)), "."),
-            paste(""),
-            paste("RUN tar -xvzf ", "/home/rstudio/containr_0.1.5.9000.tar.gz"))
-        },
-        paste("")
-      ),
+        docker_cmds <- paste(c(
+          paste("# Created by ContainR package with RockerVersioned2"),
+          paste("FROM", private$containr_image),
+          paste(""),
+          if(isTRUE(any(flagged$flag))){
+            private$included <- flagged |>
+              purrr::pluck("string")
+            glue::glue("RUN /rocker_scripts/{private$included}")
+          },
+          paste(""),
+          if(private$containr_packages %in% c("loaded", "installed")){
+            c(paste("COPY /docker/scripts/install_additional.sh /tmp/"),
+              paste(""),
+              paste("RUN chmod +x /tmp/install_additional.sh"),
+              paste(""),
+              paste("RUN", "/tmp/install_additional.sh"))
+          },
+          paste(""),
+          if(isTRUE(private$COPY)){
+            c(paste("RUN mkdir /home/rstudio/containr"),
+              paste(""),
+              paste("WORKDIR /home/rstudio"),
+              paste(""),
+              paste("COPY", paste0("./docker/", basename(private$package)), "."),
+              paste(""),
+              paste("RUN tar -xvzf ", "/home/rstudio/containr_0.1.5.9000.tar.gz"))
+          },
+          paste("")
+        ),
         collapse = "\n")
 
       writeLines(docker_cmds,
@@ -780,7 +769,7 @@ containr <- R6::R6Class("containr",
       return(proc_args)
     },
 
-    containr_start = function(){
+    containr_start = function(){ #TODO add check message for running when started
       cmd <- private$setup_command()
 
       private$process <- processx::process$new(
