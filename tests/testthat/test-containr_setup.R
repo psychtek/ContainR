@@ -10,7 +10,6 @@ test_that("Setup dockerfile build ", {
     dockerfile = "docker/Dockerfile",
     packages = "none",
     tag = "latest",
-    include_python = FALSE,
     build = FALSE)
 
   # overwrite with temp dockerfile for build
@@ -41,36 +40,31 @@ test_that("Creates Dockerfiles and folders", {
       dockerfile = "docker/Dockerfile",
       packages = "none",
       tag = "latest",
-      include_python = TRUE,
       build = FALSE)
     expect_true(fs::dir_exists("docker"))
-    expect_true(fs::dir_exists("docker/scripts"))
     expect_true(fs::file_exists("docker/Dockerfile"))
-    expect_true(fs::file_exists("docker/scripts/install_python.sh"))
-    expect_true(fs::file_exists("docker/scripts/install_pyenv.sh"))
   },
     clean = TRUE)
 })
 
-
-test_that("Set config flags for docker build", {
-
-  withr::with_tempdir({
-    docker_file <- containr$new(name = "testing",
-      image = "rstudio",
-      dockerfile = "docker/Dockerfile",
-      packages = "none",
-      tag = "latest",
-      include_python = FALSE,
-      build = FALSE)
-
-    expect_true(docker_file$set_python(TRUE))
-    expect_true(docker_file$set_login(TRUE))
-    expect_true(docker_file$set_local(TRUE))
-
-  },
-    clean = TRUE)
-})
+#
+# test_that("Set config flags for docker build", {
+#
+#   withr::with_tempdir({
+#     docker_file <- containr$new(name = "testing",
+#       image = "rstudio",
+#       dockerfile = "docker/Dockerfile",
+#       packages = "none",
+#       tag = "latest",
+#       build = FALSE)
+#
+#     expect_true(docker_file$set_python(TRUE))
+#     expect_true(docker_file$set_login(TRUE))
+#     expect_true(docker_file$set_local(TRUE))
+#
+#   },
+#     clean = TRUE)
+# })
 
 
 test_that("Docker commands work", {
@@ -102,7 +96,6 @@ test_that("Change containr settings", {
       dockerfile = "docker/Dockerfile",
       packages = "none",
       tag = "latest",
-      include_python = FALSE,
       build = FALSE)
 
     expect_equal(docker_file$set_image("verse"), "rocker/verse:latest")
@@ -120,7 +113,6 @@ test_that("Errors on non rocker image", {
       dockerfile = "docker/Dockerfile",
       packages = "none",
       tag = "latest",
-      include_python = FALSE,
       build = FALSE))
   },
     clean = TRUE)

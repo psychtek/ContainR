@@ -69,10 +69,35 @@ Useful links:
 
 \item{\code{dockerfile}}{Location of the dockerfile. Is set to \verb{docker/Dockerfile/} directory.}
 
-\item{\code{include_python}}{Flag to install python using the rocker scripts}
+\item{\code{copy}}{Hard copy working directory to build}
 
-\item{\code{build}}{Default is \code{FALSE}. Set to \code{TRUE} with the \code{build_image} fun.
+\item{\code{preview}}{Preview the image with volume mounts of working directory}
+
+\item{\code{build}}{Default is \code{FALSE}. Set to \code{TRUE} with the \code{build_image} fun.}
+
+\item{\code{include_py}}{Set to install python and reticulate}
+
+\item{\code{include_pyenc}}{Set to install python environment}
+
+\item{\code{include_tensor}}{Set to include tensor}
+
+\item{\code{include_geo}}{Set to include geo}
+
+\item{\code{include_quarto}}{Set to install quarto}
+
+\item{\code{include_tex}}{Set to install tex publishing}
+
+\item{\code{include_julia}}{Set to install julia}
+
+\item{\code{include_jupyter}}{Set to add jupyter
 Start a ContainR}
+}
+\if{html}{\out{</div>}}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{include_pyenc}}{Set to install python environment}
 }
 \if{html}{\out{</div>}}
 }
@@ -80,14 +105,15 @@ Start a ContainR}
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-containr-new}{\code{containr$new()}}
+\item \href{#method-containr-view_meta}{\code{containr$view_meta()}}
+\item \href{#method-containr-set_flags}{\code{containr$set_flags()}}
 \item \href{#method-containr-set_image}{\code{containr$set_image()}}
 \item \href{#method-containr-set_name}{\code{containr$set_name()}}
 \item \href{#method-containr-set_tag}{\code{containr$set_tag()}}
 \item \href{#method-containr-set_dockerfile}{\code{containr$set_dockerfile()}}
 \item \href{#method-containr-set_packages}{\code{containr$set_packages()}}
-\item \href{#method-containr-set_python}{\code{containr$set_python()}}
-\item \href{#method-containr-set_login}{\code{containr$set_login()}}
-\item \href{#method-containr-set_local}{\code{containr$set_local()}}
+\item \href{#method-containr-set_copy}{\code{containr$set_copy()}}
+\item \href{#method-containr-set_preview}{\code{containr$set_preview()}}
 \item \href{#method-containr-start}{\code{containr$start()}}
 \item \href{#method-containr-stop}{\code{containr$stop()}}
 \item \href{#method-containr-status}{\code{containr$status()}}
@@ -105,15 +131,26 @@ Start a ContainR}
 Setup and start a new \code{containr} in the background.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$new(
-  image = NULL,
+  image = "rstudio",
   name = NULL,
   tag = NULL,
-  packages = NULL,
+  packages = "none",
   dockerfile = NULL,
-  include_python = NULL,
-  DISABLE_AUTH = TRUE,
-  use_local = TRUE,
-  build = FALSE
+  copy = FALSE,
+  preview = TRUE,
+  build = FALSE,
+  include_py = FALSE,
+  include_pyenv = FALSE,
+  include_tensor = FALSE,
+  include_geo = FALSE,
+  include_quarto = FALSE,
+  include_tex = FALSE,
+  include_julia = FALSE,
+  include_jupyter = FALSE,
+  include_tidy = FALSE,
+  include_verse = FALSE,
+  include_pandoc = FALSE,
+  include_shiny = FALSE
 )}\if{html}{\out{</div>}}
 }
 
@@ -140,27 +177,42 @@ recommended to only install \code{loaded} as you develop your workflow.}
 to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
 an active project into a \strong{Rstudio} container from one of the Rocker images: \url{https://rocker-project.org/images/}.}
 
-\item{\code{include_python}}{Flag to install python using the rocker scripts \url{https://github.com/rocker-org/rocker-versioned2} which have had minor modifications. Future updates
-will see this streamlined. \code{Pandas} and \code{numpy} modules are also installed if this flag is set to \code{TRUE}.}
-
-\item{\code{DISABLE_AUTH}}{Bypass authentication and show the R session.
+\item{\code{copy}}{Bypass authentication and show the R session.
 Defaults to TRUE and will login when the \code{launch()} function is invoked.}
 
-\item{\code{use_local}}{If you want to port your local Rstudio session into the containr.
+\item{\code{preview}}{If you want to port your local Rstudio session into the containr.
 Defaults to \code{TRUE}.}
 
-\item{\code{build}}{This is the flag set to \code{FALSE} for when the settings are in place for the Docker process to build. View the
+\item{\code{build_image}}{This is the flag set to \code{FALSE} for when the settings are in place for the Docker process to build. View the
 current settings with the \code{print()} method and then \code{build_image(TRUE)} to start the process. This can take some time so grab a coffee.}
 }
 \if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-containr-view_meta"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-view_meta}{}}}
+\subsection{Method \code{view_meta()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{containr$view_meta()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-containr-set_flags"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-set_flags}{}}}
+\subsection{Method \code{set_flags()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{containr$set_flags()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-containr-set_image"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_image}{}}}
 \subsection{Method \code{set_image()}}{
 Set or change the base image name to build off. Additional flags can be set to
-to include python with \code{include_python()} function/
+to include python with \code{include_} function/
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_image(image)}\if{html}{\out{</div>}}
 }
@@ -177,7 +229,8 @@ to include python with \code{include_python()} function/
 \if{html}{\out{<a id="method-containr-set_name"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_name}{}}}
 \subsection{Method \code{set_name()}}{
-Change the containr name when launched. Defaults to active Rstudio project directory.
+Name of the built image and used as container name when
+the \code{run} command is flagged from the \code{start} command. Defaults to active project directory.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_name(name)}\if{html}{\out{</div>}}
 }
@@ -247,56 +300,38 @@ need to be used with care if you have a large R library. The \code{none} charact
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-containr-set_python"></a>}}
-\if{latex}{\out{\hypertarget{method-containr-set_python}{}}}
-\subsection{Method \code{set_python()}}{
-If to install python on the image. These make use of the rocker scripts
-by using the raw scripts from rocker-versioned2.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{containr$set_python(include_python)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{include_python}}{Flag \code{TRUE} or \code{FALSE} if to include python}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-containr-set_login"></a>}}
-\if{latex}{\out{\hypertarget{method-containr-set_login}{}}}
-\subsection{Method \code{set_login()}}{
+\if{html}{\out{<a id="method-containr-set_copy"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-set_copy}{}}}
+\subsection{Method \code{set_copy()}}{
 Flag to set the Rstudio login. When the \code{launch()} fun is run the browser will opeen and
 this setting bypasses the need for a password.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{containr$set_login(DISABLE_AUTH)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{containr$set_copy(copy)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{DISABLE_AUTH}}{Set to enable the Rstudio Login. Set to \code{TRUE} until secure
+\item{\code{copy}}{Set to enable the Rstudio Login. Set to \code{TRUE} until secure
 env is setup.}
 }
 \if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-containr-set_local"></a>}}
-\if{latex}{\out{\hypertarget{method-containr-set_local}{}}}
-\subsection{Method \code{set_local()}}{
+\if{html}{\out{<a id="method-containr-set_preview"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-set_preview}{}}}
+\subsection{Method \code{set_preview()}}{
 Port local config and theme settings. Option setting to port the local
 config and panel settings into the container session.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{containr$set_local(use_local)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{containr$set_preview(preview)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{use_local}}{Flag \code{TRUE} to port local settings or \code{FALSE} for a clean session.}
+\item{\code{preview}}{Flag \code{TRUE} to port local settings or \code{FALSE} for a clean session.}
 }
 \if{html}{\out{</div>}}
 }
