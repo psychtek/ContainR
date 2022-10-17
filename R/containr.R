@@ -152,6 +152,14 @@ containr <- R6::R6Class("containr",
 
     },
 
+    view_meta = function(){
+      meta <- list(unknown = private$meta_unknown,
+                       github = private$meta_github,
+                       cran = private$meta_cran,
+                   dockerfile = private$inst_dockerfile)
+      return(meta)
+    },
+
     set_flags = function(){
       private$inc_py     = self$include_py
       private$inc_pyenv  = self$include_pyenv
@@ -239,13 +247,6 @@ containr <- R6::R6Class("containr",
       private$containr_packages <- self$packages
       return(private$containr_packages)
     },
-
-
-    #' set_python = function(include_python){
-    #'   self$include_python <- include_python
-    #'   private$containr_include_python <- self$include_python
-    #'   return(private$containr_include_python)
-    #' },
 
     #' @description
     #' Flag to set the Rstudio login. When the `launch()` fun is run the browser will opeen and
@@ -399,7 +400,7 @@ containr <- R6::R6Class("containr",
         "{.strong | Preview}" = if(isTRUE(private$PREV)) {
           cli::col_green("On")
         } else {
-          cli::col_yellow("Off")
+          cli::col_yellow("Off - Using Built Image")
         },
 
         "{.strong | Copied}" = if(isTRUE(private$COPY)) {
@@ -414,6 +415,8 @@ containr <- R6::R6Class("containr",
 
         "{.strong | Dockerfile}" = cli::style_hyperlink("{.file docker/Dockerfile}",
           fs::path_real(private$containr_dockerfile)),
+
+        "{.strong | StdOut}" = private$out,
 
         "{.strong Run Command}",
 
@@ -450,9 +453,6 @@ containr <- R6::R6Class("containr",
     containr_image_run_mode = NULL,
     containr_dockerfile = NULL,
     containr_packages = NULL,
-    #build_status = NULL,
-    #python_file = NULL,
-    #python_env = NULL,
     built_image = NULL,
     COPY = FALSE,
     PREV = TRUE,
@@ -478,6 +478,10 @@ containr <- R6::R6Class("containr",
     inc_pandoc = TRUE,
     included = NULL,
     scripts = NULL,
+    out = NULL,
+    meta_unknown = NULL,
+    meta_github = NULL,
+    meta_cran = NULL,
 
     # Build Process Functions -------------------------------------------------
 
@@ -593,20 +597,21 @@ containr <- R6::R6Class("containr",
 
         Github <- Other |>
           dplyr::filter(Source != "")
-        #dplyr::select(Source)
-        #purrr::pluck("Source")
 
         if(nrow(not_installed) > 0){
+          private$meta_unknown <- not_installed$Package
           cli::cli_alert_warning("{ {nrow(not_installed)}} Unknown Source Package{?s}")
           cli::cli_alert_warning("{.val {not_installed$Package}}")
         }
 
         if(nrow(Github) > 0){
+          private$meta_github <- Github$Package
           cli::cli_alert_info("Including { {nrow(Github)}} GitHub Package{?s}")
           cli::cli_alert_info("{.val {Github$Package}}")
         }
 
         if(nrow(CRAN) > 0){
+          private$meta_cran <- CRAN$Package
           cli::cli_alert_info("Including { {nrow(CRAN)}} GitHub Package{?s}")
           cli::cli_alert_info("{.val {CRAN$Package}}")
         }
@@ -784,10 +789,8 @@ containr <- R6::R6Class("containr",
 
       if(private$process$is_alive()) {
         # private$process$get_error_file()
-        # private$process$get_output_file()
-        # private$process$get_status()
-        # private$process$format()
-        # private$process$get_name()
+        private$out <-  private$process$get_output_file()
+
         # Reset State
         private$connected <- TRUE
         assign("process", private$process, envir = parent.frame())
