@@ -65,20 +65,28 @@ containr <- R6::R6Class("containr",
     #' @field build Default is `FALSE`. Set to `TRUE` with the `build_image` fun.
     build = FALSE,
 
+    #' @field include_py Set to install python and reticulate
     include_py = FALSE,
 
+    #' @field include_pyenc Set to install python environment
     include_pyenv = FALSE,
 
+    #' @field include_tensor Set to include tensor
     include_tensor = FALSE,
 
+    #' @field include_geo Set to include geo
     include_geo = FALSE,
 
+    #' @field include_quarto Set to install quarto
     include_quarto = FALSE,
 
+    #' @field include_tex Set to install tex publishing
     include_tex = FALSE,
 
+    #' @field include_julia Set to install julia
     include_julia = FALSE,
 
+    #' @field include_jupyter Set to add jupyter
     include_jupyter = FALSE,
 
     include_tidy = FALSE,
@@ -86,6 +94,8 @@ containr <- R6::R6Class("containr",
     include_verse = FALSE,
 
     include_pandoc = FALSE,
+
+    include_shiny = FALSE,
 
     #' Start a ContainR
     #'
@@ -123,7 +133,7 @@ containr <- R6::R6Class("containr",
     initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL,
       copy = FALSE, preview = TRUE, build = FALSE, include_py = FALSE, include_pyenv = FALSE,
       include_tensor = FALSE, include_geo = FALSE, include_quarto = FALSE, include_tex = FALSE, include_julia = FALSE,
-      include_jupyter = FALSE, include_tidy = FALSE, include_verse = FALSE, include_pandoc = FALSE){
+      include_jupyter = FALSE, include_tidy = FALSE, include_verse = FALSE, include_pandoc = FALSE, include_shiny = FALSE){
 
       self$set_name(name)
       self$set_tag(tag)
@@ -142,6 +152,7 @@ containr <- R6::R6Class("containr",
       self$include_tidy = include_tidy
       self$include_verse = include_verse
       self$include_pandoc = include_pandoc
+      self$include_shiny = include_shiny
 
       self$set_flags()
       self$set_dockerfile(dockerfile)
@@ -172,6 +183,13 @@ containr <- R6::R6Class("containr",
       private$inc_tidy   = self$include_tidy
       private$inc_verse  = self$include_verse
       private$inc_pandoc = self$include_pandoc
+      private$inc_shiny = self$include_shiny
+      if(isTRUE(private$inc_jupyter)){
+        private$inc_py <- FALSE
+      }
+      if(isTRUE(private$inc_shiny)){
+        private$inc_pandoc <- FALSE
+      }
     },
 
     #' @description
@@ -397,7 +415,7 @@ containr <- R6::R6Class("containr",
           "None"
         },
 
-        "{.strong | Preview}" = if(isTRUE(private$PREV)) {
+        "{.strong | Preview Mode}" = if(isTRUE(private$PREV)) {
           cli::col_green("On")
         } else {
           cli::col_yellow("Off - Using Built Image")
@@ -415,8 +433,6 @@ containr <- R6::R6Class("containr",
 
         "{.strong | Dockerfile}" = cli::style_hyperlink("{.file docker/Dockerfile}",
           fs::path_real(private$containr_dockerfile)),
-
-        "{.strong | StdOut}" = private$out,
 
         "{.strong Run Command}",
 
@@ -465,17 +481,18 @@ containr <- R6::R6Class("containr",
     R_ENV_DIR = "/home/rstudio/.Renviron",
     R_PROF = "/home/rstudio/.Rprofile",
     inst_dockerfile = NULL,
-    inc_py = TRUE,
-    inc_pyenv = TRUE,
-    inc_tensor = TRUE,
-    inc_geo = TRUE,
-    inc_quarto = TRUE,
-    inc_tex = TRUE,
-    inc_julia = TRUE,
-    inc_jupyter = TRUE,
-    inc_tidy = TRUE,
-    inc_verse = TRUE,
-    inc_pandoc = TRUE,
+    inc_py = FALSE,
+    inc_pyenv = FALSE,
+    inc_tensor = FALSE,
+    inc_geo = FALSE,
+    inc_quarto = FALSE,
+    inc_tex = FALSE,
+    inc_julia = FALSE,
+    inc_jupyter = FALSE,
+    inc_tidy = FALSE,
+    inc_verse = FALSE,
+    inc_pandoc = FALSE,
+    inc_shiny = FALSE,
     included = NULL,
     scripts = NULL,
     out = NULL,
@@ -489,13 +506,13 @@ containr <- R6::R6Class("containr",
 
       set_add_flags <- dplyr::tibble(
         include = c("python", "pyenv", "tensor", "geospatial", "quarto",
-                    "texlive", "julia", "jupyter", "tidyverse", "verse", "pandoc"),
+                    "texlive", "julia", "jupyter", "tidyverse", "verse", "pandoc", "shiny"),
         flag = c(private$inc_py, private$inc_pyenv, private$inc_tensor, private$inc_geo,
                  private$inc_quarto, private$inc_tex, private$inc_julia, private$inc_jupyter,
-                 private$inc_tidy, private$inc_verse, private$inc_pandoc),
+                 private$inc_tidy, private$inc_verse, private$inc_pandoc, private$inc_shiny),
         string = c("install_python.sh", "install_pyenv.sh", "install_tensorflow.sh", "install_geospatial.sh",
                    "install_quarto.sh", "install_texlive.sh", "install_julia.sh", "install_jupyter.sh",
-                   "install_tidyverse.sh", "install_verse.sh", "install_pandoc.sh"))
+                   "install_tidyverse.sh", "install_verse.sh", "install_pandoc.sh", "install_shiny_server.sh"))
 
       flagged <- set_add_flags |>
         dplyr::filter(if_any("flag", ~ . == TRUE ))
