@@ -21,11 +21,13 @@ Creates a new \code{containr} object based on the \url{https://rocker-project.or
 
 \section{Setup}{
 
-To get started, load a project and load any packages used throughout your scripts.
+To get started, load a RStudio project and attached any libraries. The default base image \emph{rstudio}
+will load the \code{rocker/rstudio:latest} image from Dockerhub. Additional script preferences can be called
+up by using the relevant \code{include_}. This allows for more felixible container setup depending on how you want
+to containerize your project.
 
-\if{html}{\out{<div class="sourceCode R">}}\preformatted{cont <- containr$new(image = "rstudio", name = "testing", tag = "latest",
- packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE,
- use_local = TRUE)
+\if{html}{\out{<div class="sourceCode R">}}\preformatted{cont <- containr$new(image = "rstudio", name = "projectname", tag = "latest",
+ packages = "loaded", include_py = TRUE)
 }\if{html}{\out{</div>}}
 
 Then use the \code{build_image(TRUE)} to flag the build process
@@ -59,7 +61,8 @@ Useful links:
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
-\item{\code{image}}{Name of the image from either the \link{data_rocker_table} or in docker register}
+\item{\code{image}}{Name of the image from either the \link{data_rocker_table} or in docker register.
+Additional packages can be setup to install with the \code{include_} flags.}
 
 \item{\code{name}}{Name of the containr when launched. Defaults to the active Rstudio Project.}
 
@@ -69,19 +72,21 @@ Useful links:
 
 \item{\code{dockerfile}}{Location of the dockerfile. Is set to \verb{docker/Dockerfile/} directory.}
 
-\item{\code{copy}}{Hard copy working directory to build}
+\item{\code{copy}}{Hard copy working directory to build and setup directory on the image.}
 
-\item{\code{preview}}{Preview the image with volume mounts of working directory}
+\item{\code{preview}}{Preview the image with volume mounts of working directory.
+This will clone local config and panel settings for testing in the session and will
+automatically switch off when building a new image.}
 
 \item{\code{build}}{Default is \code{FALSE}. Set to \code{TRUE} with the \code{build_image} fun.}
 
 \item{\code{include_py}}{Set to install python and reticulate}
 
-\item{\code{include_pyenc}}{Set to install python environment}
+\item{\code{include_pyenv}}{Set to install python environment}
 
 \item{\code{include_tensor}}{Set to include tensor}
 
-\item{\code{include_geo}}{Set to include geo}
+\item{\code{include_geo}}{Set to include geospatial R packages in addition to the packages installed in `rocker/verse``}
 
 \item{\code{include_quarto}}{Set to install quarto}
 
@@ -89,15 +94,19 @@ Useful links:
 
 \item{\code{include_julia}}{Set to install julia}
 
-\item{\code{include_jupyter}}{Set to add jupyter
+\item{\code{include_jupyter}}{Set to add jupyter}
+
+\item{\code{include_tidy}}{Set to include tidyverse packages R packages and their dependencies apt packages.
+e.g. the tidyverse package, the devtools package, the rmarkdown package, some R Database Interface packages,
+the data.table package, the fst package, and the Apache Arrow R package.}
+
+\item{\code{include_verse}}{Set to include TeX Live and some publishing-related R packages,
+in addition to the packages installed in \code{rocker/tidyverse}.}
+
+\item{\code{include_pandoc}}{Set to include pandoc.}
+
+\item{\code{include_shiny}}{Set to include shiny server.
 Start a ContainR}
-}
-\if{html}{\out{</div>}}
-}
-\section{Active bindings}{
-\if{html}{\out{<div class="r6-active-bindings">}}
-\describe{
-\item{\code{include_pyenc}}{Set to install python environment}
 }
 \if{html}{\out{</div>}}
 }
@@ -105,7 +114,6 @@ Start a ContainR}
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-containr-new}{\code{containr$new()}}
-\item \href{#method-containr-view_meta}{\code{containr$view_meta()}}
 \item \href{#method-containr-set_flags}{\code{containr$set_flags()}}
 \item \href{#method-containr-set_image}{\code{containr$set_image()}}
 \item \href{#method-containr-set_name}{\code{containr$set_name()}}
@@ -122,6 +130,7 @@ Start a ContainR}
 \item \href{#method-containr-proc}{\code{containr$proc()}}
 \item \href{#method-containr-print}{\code{containr$print()}}
 \item \href{#method-containr-get_cmd}{\code{containr$get_cmd()}}
+\item \href{#method-containr-view_meta}{\code{containr$view_meta()}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -159,12 +168,12 @@ Setup and start a new \code{containr} in the background.
 \describe{
 \item{\code{image}}{Repository Name of rocker image from \link{data_rocker_table}. Defaults to
 the \code{rstudio} stack \code{rocker/rstudio:latest}. For more information about each stack
-visit \url{https://rocker-project.org/images/}. If you ran \code{docker_build()} then supply
-this argument with the string of the \emph{name} of the build. Built container images can be
+visit \url{https://rocker-project.org/images/}. If you ran \code{build_image(TRUE)} then
+this argument update the string of the \emph{name} of the build. Built container images can be
 view by running the \code{docker_images()} function.}
 
 \item{\code{name}}{The name of the containr image to build for the docker process to launch. If none is applied then
-it will default to the working Rstudio project directory}
+it will default to the working Rstudio project directory.}
 
 \item{\code{tag}}{A character string of the require version. If no tag is supplied then the function will default to \code{latest}.}
 
@@ -175,13 +184,13 @@ recommended to only install \code{loaded} as you develop your workflow.}
 
 \item{\code{dockerfile}}{Default location is in the \verb{docker/} folder. Build will save the final \code{Dockerfile}
 to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
-an active project into a \strong{Rstudio} container from one of the Rocker images: \url{https://rocker-project.org/images/}.}
+an active project into a \strong{Rstudio} container from one of the Rocker images: \url{https://rocker-project.org/images/}. Suggest
+leaving blank for defaults.}
 
-\item{\code{copy}}{Bypass authentication and show the R session.
-Defaults to TRUE and will login when the \code{launch()} function is invoked.}
+\item{\code{copy}}{This will run the CMD Check function and creat a tar file and update the Dockerfile to
+unpack this into the directory under \verb{/home/rstudio/} that was set under \code{name} parameter.}
 
-\item{\code{preview}}{If you want to port your local Rstudio session into the containr.
-Defaults to \code{TRUE}.}
+\item{\code{preview}}{Preview the base image in a Rstudio session in a browser with cloned local settings like theme, config and environment.}
 
 \item{\code{build_image}}{This is the flag set to \code{FALSE} for when the settings are in place for the Docker process to build. View the
 current settings with the \code{print()} method and then \code{build_image(TRUE)} to start the process. This can take some time so grab a coffee.}
@@ -190,18 +199,10 @@ current settings with the \code{print()} method and then \code{build_image(TRUE)
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-containr-view_meta"></a>}}
-\if{latex}{\out{\hypertarget{method-containr-view_meta}{}}}
-\subsection{Method \code{view_meta()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{containr$view_meta()}\if{html}{\out{</div>}}
-}
-
-}
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-containr-set_flags"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_flags}{}}}
 \subsection{Method \code{set_flags()}}{
+Sets the include flags for additional scripts to run
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_flags()}\if{html}{\out{</div>}}
 }
@@ -220,7 +221,7 @@ to include python with \code{include_} function/
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{image}}{Set base image name using \code{c("rstudio", "tidyverse", "verse", "geospatial", "binder")}.}
+\item{\code{image}}{Set base image name using \verb{c("rstudio", "tidyverse", "verse", "geospatial", "binder", "shiny)}.}
 }
 \if{html}{\out{</div>}}
 }
@@ -421,6 +422,16 @@ process on the screen, whether it is running and it's process id, etc.
 Returns a character string of the run command.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$get_cmd()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-containr-view_meta"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-view_meta}{}}}
+\subsection{Method \code{view_meta()}}{
+WIP to store all settings. Possible for saving to json or object for later use.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{containr$view_meta()}\if{html}{\out{</div>}}
 }
 
 }
