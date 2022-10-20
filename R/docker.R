@@ -7,6 +7,8 @@
 docker <- R6::R6Class(
   classname = "docker",
   cloneable = FALSE,
+  lock_objects = FALSE,
+  lock_class = TRUE,
 
   public = list(
 

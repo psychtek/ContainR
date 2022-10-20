@@ -16,14 +16,27 @@ To learn more about \pkg{containr}, start with the vignettes: \code{browseVignet
 }
 \section{Rockered}{
 
-Creates a new \code{containr} object based on the \url{https://rocker-project.org/images/}.
+Creates a new \code{containr} object based on one of
+the \url{https://rocker-project.org/images/}.
+The \code{DISABLE_AUTH=TRUE}has been set as default so each session logs in direct without needing
+a password.
+}
+
+\section{Computational Reproducibility}{
+
+The general concept of this package is to aid in containerization of a workflow.
+A workflow could be a simple analysis script to a complex pipeline however, capturing
+the system ecosystem with all the additional libraries and packages are often an afterthought.
+\code{ContainR} package is an attempt to be an easier implementation of Rstudio containers ported
+from the cool developers at \url{https://rocker-project.org/images/}. This package is both a wrapper
+with Docker support to build an image and clone a workflow and packages into a Rstudio image.
 }
 
 \section{Setup}{
 
 To get started, load a RStudio project and attached any libraries. The default base image \emph{rstudio}
 will load the \code{rocker/rstudio:latest} image from Dockerhub. Additional script preferences can be called
-up by using the relevant \code{include_}. This allows for more felixible container setup depending on how you want
+up by using the relevant \code{include_}. This allows for more flexible container setup depending on how you want
 to containerize your project.
 
 \if{html}{\out{<div class="sourceCode R">}}\preformatted{cont <- containr$new(image = "rstudio", name = "projectname", tag = "latest",
@@ -49,6 +62,7 @@ cont$stop() # stop the container
 Useful links:
 \itemize{
   \item \url{https://github.com/psychtek/ContainR}
+  \item \url{https://rocker-project.org/images/}
   \item Report bugs at \url{https://github.com/psychtek/ContainR/issues}
 }
 
@@ -213,7 +227,7 @@ Sets the include flags for additional scripts to run
 \if{latex}{\out{\hypertarget{method-containr-set_image}{}}}
 \subsection{Method \code{set_image()}}{
 Set or change the base image name to build off. Additional flags can be set to
-to include python with \code{include_} function/
+to include python with the relevant \code{include_} functions.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_image(image)}\if{html}{\out{</div>}}
 }

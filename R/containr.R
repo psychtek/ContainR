@@ -9,12 +9,23 @@
 #' can be used to build a container image with your development environment.
 #'
 #' @section Rockered:
-#' Creates a new `containr` object based on the \url{https://rocker-project.org/images/}.
+#' Creates a new `containr` object based on one of
+#' the \url{https://rocker-project.org/images/}.
+#' The `DISABLE_AUTH=TRUE`has been set as default so each session logs in direct without needing
+#' a password.
+#'
+#' @section Computational Reproducibility:
+#' The general concept of this package is to aid in containerization of a workflow.
+#' A workflow could be a simple analysis script to a complex pipeline however, capturing
+#' the system ecosystem with all the additional libraries and packages are often an afterthought.
+#' `ContainR` package is an attempt to be an easier implementation of Rstudio containers ported
+#' from the cool developers at \url{https://rocker-project.org/images/}. This package is both a wrapper
+#' with Docker support to build an image and clone a workflow and packages into a Rstudio image.
 #'
 #' @section Setup:
 #' To get started, load a RStudio project and attached any libraries. The default base image *rstudio*
 #' will load the `rocker/rstudio:latest` image from Dockerhub. Additional script preferences can be called
-#' up by using the relevant `include_`. This allows for more felixible container setup depending on how you want
+#' up by using the relevant `include_`. This allows for more flexible container setup depending on how you want
 #' to containerize your project.
 #' ```R
 #' cont <- containr$new(image = "rstudio", name = "projectname", tag = "latest",
@@ -202,7 +213,7 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' Set or change the base image name to build off. Additional flags can be set to
-    #' to include python with `include_` function/
+    #' to include python with the relevant `include_` functions.
     #'
     #' @param image Set base image name using `c("rstudio", "tidyverse", "verse", "geospatial", "binder", "shiny)`.
     set_image = function(image){
@@ -372,13 +383,13 @@ containr <- R6::R6Class("containr",
         },
         "|", cli::style_bold("Name:"),
         if(isTRUE(self$status() == "Running")) {
-          docker_containers()$Names
+          cli::col_green(docker_containers()$Names)
         } else {
           cli::col_yellow("Not Started")
         },
         "|", cli::style_bold("Ports:"),
         if(isTRUE(self$status() == "Running")) {
-          docker_containers()$Ports
+          cli::col_green(docker_containers()$Ports)
         } else {
           cli::col_yellow("Not Started")
         },
@@ -462,11 +473,18 @@ containr <- R6::R6Class("containr",
 
     #' @description WIP to store all settings. Possible for saving to json or object for later use.
     view_meta = function(){
-      meta <- list(unknown = private$meta_unknown,
-        github = private$meta_github,
-        cran = private$meta_cran,
+      meta <- list(
+        containr = list(name = private$containr_name,
+                    tag = self$tag),
+        base = private$containr_image,
+        created = private$containr_created,
+        image_Id = private$containr_id,
+        packages = list(unknown = private$meta_unknown,
+                        github = private$meta_github,
+                        cran = private$meta_cran),
         dockerfile = private$inst_dockerfile,
-        tarfile = private$packaged_tar_info)
+        tarfile = private$packaged_tar_info,
+        log = private$out)
       return(meta)
     }
 
@@ -488,6 +506,8 @@ containr <- R6::R6Class("containr",
     containr_image_run_mode = NULL,
     containr_dockerfile = NULL,
     containr_packages = NULL,
+    containr_created = NULL,
+    containr_id = NULL,
     built_image = NULL,
     COPY = FALSE,
     PREV = TRUE,
@@ -683,9 +703,9 @@ containr <- R6::R6Class("containr",
           paste("\tCRAN=$CRAN_SOURCE"),
           paste("fi"),
           paste(""),
-          if(length(Github) > 0) {
+          if(nrow(Github) > 0) {
             c(paste("Rscript -e \"install.packages(c('remotes'), repos='${CRAN_SOURCE}')\""),
-              paste("\n echo -e 'Installing GitHub Packages'\n "),
+              paste("\necho -e 'Installing GitHub Packages'\n "),
               paste("Rscript -e", paste("\"remotes::install_github(\'",  Github$Source , "\')\" ", sep = "") ," "))
           },
           paste(""),
@@ -716,7 +736,7 @@ containr <- R6::R6Class("containr",
       if(!fs::dir_exists("docker")) {
         fs::dir_create("docker")
       }
-      # TODO add a metadata function using stored settings and file like packaged <- fs::file_info(get_tar_file)
+
       if(isTRUE(private$COPY)){
         pack_dir <- fs::path_temp()
         private$package <- devtools::build(".",
@@ -730,7 +750,6 @@ containr <- R6::R6Class("containr",
           private$packaged_tar_info <- fs::file_info(get_tar_file)
           cli::cli_alert_success("Archived Project Saved: {.file {get_tar_file}}")
         }
-
       }
 
       if(private$containr_packages %in% c("loaded", "installed")){
@@ -871,6 +890,7 @@ containr <- R6::R6Class("containr",
     },
 
     get_containr_data = function(){
+
       private$containr_image_run_mode <- processx::run(command = "docker",
         args = c("inspect",
           "--format",
@@ -885,42 +905,36 @@ containr <- R6::R6Class("containr",
           private$containr_name),
         error_on_status = TRUE)$stdout
 
-      # private$containr_image <- processx::run(command = "docker",
-      #   args = c("inspect",
-      #     "--format",
-      #     "'{{.Config.Image}}'",
-      #     private$containr_name),
-      #   error_on_status = TRUE)$stdout
+      created <- processx::run(command = "docker",
+                                        args = c("inspect",
+                                                 "--format",
+                                                 "'{{.Created}}'",
+                                                 private$containr_name),
+                                        error_on_status = TRUE)$stdout
+      private$containr_created <- private$format_string(created) |> as.Date()
 
-      # additional outputs
-      # processx::run(command = "docker",
-      #   args = c("inspect",
-      #     "--format",
-      #     "'{{.State.Running}}'",
-      #     "ContainR"),
-      #   error_on_status = TRUE)$stdout
-      #
-      # processx::run(command = "docker",
-      #   args = c("inspect",
-      #     "--format",
-      #     "'{{.State.Paused}}'",
-      #     "ContainR"),
-      #   error_on_status = TRUE)$stdout
-      #
-      # processx::run(command = "docker",
-      #   args = c("inspect",
-      #     "--format",
-      #     "'{{.State.StartedAt}}'",
-      #     "ContainR"),
-      #   error_on_status = TRUE)$stdout
-      #
-      # processx::run(command = "docker",
-      #   args = c("inspect",
-      #     "--format",
-      #     "'{{.Name}}'",
-      #     "ContainR"),
-      #   error_on_status = TRUE)$stdout
+      meta_id <- processx::run(command = "docker",
+                               args = c("inspect",
+                                        "--format",
+                                        "'{{.Id}}'",
+                                        private$containr_name),
+                               error_on_status = TRUE)$stdout
+      private$containr_id <- private$format_string(meta_id)
+
+    },
+
+    format_string = function(string){
+      gsub("\'|\\\n", "", string)
+    },
+
+    save_containr = function(path, meta){
+      saveRDS(object = meta, file = path, version = 3L)
+    },
+
+    load_containr = function(path){
+      readRDS(path)
     }
+
   )
 
 )
