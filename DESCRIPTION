@@ -20,7 +20,6 @@ Imports:
     crayon,
     sys,
     processx,
-    rlang,
     jsonlite,
     tidyr
 Depends: 
