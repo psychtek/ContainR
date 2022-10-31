@@ -142,7 +142,7 @@ containr <- R6::R6Class("containr",
     #' installed packages are skipped when the `build_image` command is run. If you have a large package library it is
     #' recommended to only install `loaded` as you develop your workflow.
     #'
-    #' @param dockerfile Default location is in the `docker/` folder. Build will save the final `Dockerfile`
+    #' @param dockerfile A Dockerfile recipe to create a Docker image. Default location is in the `docker/` folder. Build will save the final `Dockerfile`
     #' to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
     #' an active project into a **Rstudio** container from one of the Rocker images: \url{https://rocker-project.org/images/}. Suggest
     #' leaving blank for defaults.

@@ -196,7 +196,7 @@ loaded in your active project session. The \code{installed} string will included
 installed packages are skipped when the \code{build_image} command is run. If you have a large package library it is
 recommended to only install \code{loaded} as you develop your workflow.}
 
-\item{\code{dockerfile}}{Default location is in the \verb{docker/} folder. Build will save the final \code{Dockerfile}
+\item{\code{dockerfile}}{A Dockerfile recipe to create a Docker image. Default location is in the \verb{docker/} folder. Build will save the final \code{Dockerfile}
 to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
 an active project into a \strong{Rstudio} container from one of the Rocker images: \url{https://rocker-project.org/images/}. Suggest
 leaving blank for defaults.}

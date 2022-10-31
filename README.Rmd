@@ -20,13 +20,15 @@ knitr::opts_chunk$set(
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-A set of functions that I found handy during the development of the [repliCATS pipeline](https://replicats.research.unimelb.edu.au/) that I've ported into this package. The key problems to irreproducibility of data in research is missing *documentation*, *version control* and *containerization*. `ContainR` seeks to address the container issue by making it easier to develop the environment for a R project.  
+A set of functions that I found handy during the development of the [repliCATS pipeline](https://replicats.research.unimelb.edu.au/) that I've ported into this package. 
 
 ## Overview
 
-The package ports the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) Rstudio stacks and basic [Docker](https://docs.docker.com/reference/) commands to R. Based on whatever Rstudio project is currently active, it allows the user to create a Dockerfile with choices to include attached CRAN packages (including Github packages), include Python (Pandas and Numpy) and launch the Rstudio container in a browser. 
+The key problems to irreproducibility of data in research is missing *documentation*, *version control* and *containerization*. `ContainR` seeks to address the container issue by making it easier to create the environment for a R project in a docker image without the need for in depth understanding of docker. The final product is a docker recipe and image with documented metadata for computational reproducibility.  
 
-Once the image has baked any additional packages into the base Rocker stack the dockerfile and scripts can be saved for distribution and the image pushed to [DockerHub](https://hub.docker.com/). When a **ContainR session** is launched, your local config settings can also *cloned* into the session. R environment secrets are also available for access during the session.  
+The package ports the [rocker-versioned](https://github.com/rocker-org/rocker-versioned2) Rstudio stacks and basic [Docker](https://docs.docker.com/reference/) commands to R. Based on whatever Rstudio project is currently active, it allows the user to create a Dockerfile with choices to include attached CRAN packages (including Github packages), include Python, Julia, jupyter, Pandoc etc. and launch the Rstudio container in a browser. 
+
+Once the image has baked any additional packages into the base Rocker stack, the dockerfile can be saved for distribution and the image pushed to [DockerHub](https://hub.docker.com/). When a **ContainR session** is launched, your local config settings can also *cloned* into the session for previewing before hard coding the package directory into the docker image.
 
 It is currently a work in progress and welcome any [issues and comments](https://github.com/psychtek/ContainR/issues). 
 
@@ -37,14 +39,6 @@ It is currently a work in progress and welcome any [issues and comments](https:/
 
 [Docker](https://docker-docs.netlify.app/install/) is required for the use of this package with support only tested for `R (>= 4.0.0)` base images. 
 
-#### Docker Check 
-
-Check if Docker is installed on the system or visit install instructions for [OSX](https://docs.docker.com/desktop/install/mac-install/), [Windows](https://docs.docker.com/desktop/install/windows-install/) or [Linux](https://docs.docker.com/engine/install/):
-
-```r
-docker_check()
-```
-
 ### Installation
 
 You can install the development version of `ContainR` from [GitHub](https://github.com/psychtek/ContainR) with:
@@ -53,6 +47,15 @@ You can install the development version of `ContainR` from [GitHub](https://gith
 # install.packages("devtools")
 devtools::install_github("psychtek/ContainR")
 ```
+
+#### Docker Check 
+
+Check if Docker is installed on the system or visit install instructions for [OSX](https://docs.docker.com/desktop/install/mac-install/), [Windows](https://docs.docker.com/desktop/install/windows-install/) or [Linux](https://docs.docker.com/engine/install/):
+
+```r
+docker_check()
+```
+
 
 ### Rocker-Versioned Images
 
@@ -75,13 +78,11 @@ data_rocker_table |> dplyr::select(-base_image)
 
 #### Create a Dockerfile 
 
-For example, to create a Dockerfile based on the latest Rocker Rstudio and install whatever packages are loaded into the local session:
+For example, to create a Dockerfile based on the latest Rocker Rstudio and install packages that are loaded into the local session, add python support and install the active project from `CMD CHECK` archive: 
 
 ```r
-containr <- containr$new(image = "rstudio", name = "containr", tag = "latest", 
-  packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE, 
-  use_local = FALSE)
-
+containr <- containr$new(image = "rstudio", name = "project_name", 
+packages = "loaded", copy = TRUE, include_python = TRUE)
 ```
 
 The return process from this function results in the creation of a `docker/Dockerfile` with additional scripts in the `docker/scripts/` directory. If any packages require install from Github, the function take note of these and attempt to add them to the install file as well. Any packages already installed on the base Rocker image will be skipped. 
@@ -125,11 +126,13 @@ Running `stop()` will stop the container session completely leaving the image bu
 
 ## Docker Wrapper & Other Info
 
-A basic docker wrapper is also included that will build functionality as development continues. Like the `containr` object, this is also a [R6](https://github.com/r-lib/R6) class object. Included are three functions: 
+A basic docker wrapper is also included that will build functionality as development continues. Like the `containr` object, this is also a [R6](https://github.com/r-lib/R6) class object. Currently included are three functions: 
 
 - `docker_images()`: returns a tibble of built images. Equivalent terminal command is `docker image ls` but it was difficult to work with the terminal output so this now makes things easier to work within R environment. 
 
 - `docker_containers()`: Returns a tibble of active containers. Equivalent terminal command is `docker container ls`. 
+
+- `docker_search("rstudio")`: Returns a tibble of search results. 
 
 To run a docker command you can do it direct:
 

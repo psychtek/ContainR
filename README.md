@@ -12,27 +12,31 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 
 A set of functions that I found handy during the development of the
 [repliCATS pipeline](https://replicats.research.unimelb.edu.au/) that
-I’ve ported into this package. The key problems to irreproducibility of
-data in research is missing *documentation*, *version control* and
-*containerization*. `ContainR` seeks to address the container issue by
-making it easier to develop the environment for a R project.
+I’ve ported into this package.
 
 ## Overview
+
+The key problems to irreproducibility of data in research is missing
+*documentation*, *version control* and *containerization*. `ContainR`
+seeks to address the container issue by making it easier to create the
+environment for a R project in a docker image without the need for in
+depth understanding of docker. The final product is a docker recipe and
+image with documented metadata for computational reproducibility.
 
 The package ports the
 [rocker-versioned](https://github.com/rocker-org/rocker-versioned2)
 Rstudio stacks and basic [Docker](https://docs.docker.com/reference/)
 commands to R. Based on whatever Rstudio project is currently active, it
 allows the user to create a Dockerfile with choices to include attached
-CRAN packages (including Github packages), include Python (Pandas and
-Numpy) and launch the Rstudio container in a browser.
+CRAN packages (including Github packages), include Python, Julia,
+jupyter, Pandoc etc. and launch the Rstudio container in a browser.
 
 Once the image has baked any additional packages into the base Rocker
-stack the dockerfile and scripts can be saved for distribution and the
-image pushed to [DockerHub](https://hub.docker.com/). When a **ContainR
-session** is launched, your local config settings can also *cloned* into
-the session. R environment secrets are also available for access during
-the session.
+stack, the dockerfile can be saved for distribution and the image pushed
+to [DockerHub](https://hub.docker.com/). When a **ContainR session** is
+launched, your local config settings can also *cloned* into the session
+for previewing before hard coding the package directory into the docker
+image.
 
 It is currently a work in progress and welcome any [issues and
 comments](https://github.com/psychtek/ContainR/issues).
@@ -45,6 +49,16 @@ comments](https://github.com/psychtek/ContainR/issues).
 use of this package with support only tested for `R (>= 4.0.0)` base
 images.
 
+### Installation
+
+You can install the development version of `ContainR` from
+[GitHub](https://github.com/psychtek/ContainR) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("psychtek/ContainR")
+```
+
 #### Docker Check
 
 Check if Docker is installed on the system or visit install instructions
@@ -54,16 +68,6 @@ for [OSX](https://docs.docker.com/desktop/install/mac-install/),
 
 ``` r
 docker_check()
-```
-
-### Installation
-
-You can install the development version of `ContainR` from
-[GitHub](https://github.com/psychtek/ContainR) with:
-
-``` r
-# install.packages("devtools")
-devtools::install_github("psychtek/ContainR")
 ```
 
 ### Rocker-Versioned Images
@@ -102,12 +106,12 @@ data_rocker_table |> dplyr::select(-base_image)
 #### Create a Dockerfile
 
 For example, to create a Dockerfile based on the latest Rocker Rstudio
-and install whatever packages are loaded into the local session:
+and install packages that are loaded into the local session, add python
+support and install the active project from `CMD CHECK` archive:
 
 ``` r
-containr <- containr$new(image = "rstudio", name = "containr", tag = "latest", 
-  packages = "loaded", include_python = FALSE, DISABLE_AUTH = TRUE, 
-  use_local = FALSE)
+containr <- containr$new(image = "rstudio", name = "project_name", 
+packages = "loaded", copy = TRUE, include_python = TRUE)
 ```
 
 The return process from this function results in the creation of a
@@ -170,8 +174,8 @@ image built intact.
 
 A basic docker wrapper is also included that will build functionality as
 development continues. Like the `containr` object, this is also a
-[R6](https://github.com/r-lib/R6) class object. Included are three
-functions:
+[R6](https://github.com/r-lib/R6) class object. Currently included are
+three functions:
 
 - `docker_images()`: returns a tibble of built images. Equivalent
   terminal command is `docker image ls` but it was difficult to work
@@ -181,34 +185,30 @@ functions:
 - `docker_containers()`: Returns a tibble of active containers.
   Equivalent terminal command is `docker container ls`.
 
+- `docker_search("rstudio")`: Returns a tibble of search results.
+
 To run a docker command you can do it direct:
 
 ``` r
 containr::docker$new(process = "docker",
     commands = "image",
     options = "ls")$show_output()
-#> # A tibble: 5 × 5
-#>   Repository                Tag    ID           CreatedSince  Size  
-#>   <chr>                     <chr>  <chr>        <chr>         <chr> 
-#> 1 testing                   latest 109adc46fa7d 5 days ago    1.86GB
-#> 2 rocker/r-base             latest 8b9043f755f1 5 days ago    863MB 
-#> 3 rstudio-rock              latest 43333a2e7a4c 5 days ago    1.87GB
-#> 4 <none>                    <none> fff24ba7fdba 5 days ago    1.87GB
-#> 5 romancin/tinymediamanager latest 42880c846cf2 11 months ago 261MB
+#> # A tibble: 2 × 5
+#>   Repository     Tag    ID           CreatedSince Size  
+#>   <chr>          <chr>  <chr>        <chr>        <chr> 
+#> 1 rocker/rstudio latest ce11a17ed477 5 weeks ago  1.75GB
+#> 2 alpine         latest 9c6f07244728 2 months ago 5.54MB
 ```
 
 or with the included functions:
 
 ``` r
 containr::docker_images()
-#> # A tibble: 5 × 5
-#>   Repository                Tag    ID           CreatedSince  Size  
-#>   <chr>                     <chr>  <chr>        <chr>         <chr> 
-#> 1 testing                   latest 109adc46fa7d 5 days ago    1.86GB
-#> 2 rocker/r-base             latest 8b9043f755f1 5 days ago    863MB 
-#> 3 rstudio-rock              latest 43333a2e7a4c 5 days ago    1.87GB
-#> 4 <none>                    <none> fff24ba7fdba 5 days ago    1.87GB
-#> 5 romancin/tinymediamanager latest 42880c846cf2 11 months ago 261MB
+#> # A tibble: 2 × 5
+#>   Repository     Tag    ID           CreatedSince Size  
+#>   <chr>          <chr>  <chr>        <chr>        <chr> 
+#> 1 rocker/rstudio latest ce11a17ed477 5 weeks ago  1.75GB
+#> 2 alpine         latest 9c6f07244728 2 months ago 5.54MB
 ```
 
 Search dockerhub for images:
@@ -221,13 +221,13 @@ containr::docker_search("rocker")
 #>  1 rocker/rstudio     "RStudio Server image"                 399 NA      [OK]   
 #>  2 rocker/shiny       ""                                     172 NA      [OK]   
 #>  3 rocker/tidyverse   "Version-stable build of R, rstud…     157 NA      [OK]   
-#>  4 rocker/r-base      "Basic R for Rocker And Official …      80 NA      [OK]   
+#>  4 rocker/r-base      "Basic R for Rocker And Official …      81 NA      [OK]   
 #>  5 rocker/verse       "Adds tex & related publishing pa…      64 NA      [OK]   
-#>  6 rocker/r-ver       "Reproducible builds to fixed ver…      49 NA      [OK]   
-#>  7 rocker/geospatial  "Docker-based Geospatial toolkit …      44 NA      [OK]   
-#>  8 rocker/shiny-verse "Rocker Shiny image + Tidyverse R…      44 NA      [OK]   
-#>  9 rocker/ropensci    ""                                      22 NA      [OK]   
-#> 10 rocker/r-devel     ""                                      22 NA      [OK]   
+#>  6 rocker/r-ver       "Reproducible builds to fixed ver…      50 NA      [OK]   
+#>  7 rocker/shiny-verse "Rocker Shiny image + Tidyverse R…      45 NA      [OK]   
+#>  8 rocker/geospatial  "Docker-based Geospatial toolkit …      44 NA      [OK]   
+#>  9 rocker/r-devel     ""                                      22 NA      [OK]   
+#> 10 rocker/ropensci    ""                                      22 NA      [OK]   
 #> # … with 15 more rows, and abbreviated variable names ¹​StarCount, ²​IsOfficial,
 #> #   ³​IsAutomated
 ```
