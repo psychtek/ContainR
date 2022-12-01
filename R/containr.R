@@ -71,10 +71,10 @@ containr <- R6::R6Class("containr",
     #' @field dockerfile Location of the dockerfile. Is set to `docker/Dockerfile/` directory.
     dockerfile = NULL,
 
-    #' @field copy Hard copy working directory to build and setup directory on the image.
+    #' @field copy Hard copy the current project working directory to build and setup directory on the image.
     copy = FALSE,
 
-    #' @field preview Preview the image with volume mounts of working directory.
+    #' @field preview Preview the image with volume mounts of the current project working directory.
     #' This will clone local config and panel settings for testing in the session and will
     #' automatically switch off when building a new image.
     preview = TRUE,
@@ -124,7 +124,8 @@ containr <- R6::R6Class("containr",
     #' Start a ContainR
     #'
     #' @description
-    #' Setup and start a new `containr` in the background.
+    #' Initialise and build a new `containr` image from a RStudio Rocker image and save the image to
+    #' Dockerhub and a folder with build metadata.
     #'
     #' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
     #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
@@ -138,8 +139,8 @@ containr <- R6::R6Class("containr",
     #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
     #'
     #' @param packages Provide a string of either `loaded`, `installed` or `none`. `Loaded` will included packages that are currently
-    #' loaded in your active project session. The `installed` string will included everything inside you local default R library. Already
-    #' installed packages are skipped when the `build_image` command is run. If you have a large package library it is
+    #' loaded in your active project session. The `installed` string will included everything inside you local default R library.
+    #' Note that already installed packages on the image are skipped when the `build_image` command is run. If you have a large package library it is
     #' recommended to only install `loaded` as you develop your workflow.
     #'
     #' @param dockerfile A Dockerfile recipe to create a Docker image. Default location is in the `docker/` folder. Build will save the final `Dockerfile`
@@ -147,7 +148,7 @@ containr <- R6::R6Class("containr",
     #' an active project into a **Rstudio** container from one of the Rocker images: \url{https://rocker-project.org/images/}. Suggest
     #' leaving blank for defaults.
     #'
-    #' @param copy This will run the CMD Check function and creat a tar file and update the Dockerfile to
+    #' @param copy This will run the CMD Check function and create a tar file and update the Dockerfile to
     #' unpack this into the directory under `/home/rstudio/` that was set under `name` parameter.
     #'
     #' @param preview Preview the base image in a Rstudio session in a browser with cloned local settings like theme, config and environment.
@@ -212,6 +213,21 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
+    #' Name of the built image and used as container name when
+    #' the `run` command is flagged from the `start` command. Defaults to active project directory.
+    #'
+    #' @param name Character string of required name
+    set_name = function(name){
+      if(is.null(name)){
+        self$name <- tolower(basename(fs::path_wd()))
+      } else {
+        self$name <- tolower(name)
+      }
+      private$containr_name <- self$name
+      return(private$containr_name)
+    },
+
+    #' @description
     #' Set or change the base image name to build off. Additional flags can be set to
     #' to include python with the relevant `include_` functions.
     #'
@@ -232,26 +248,11 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Name of the built image and used as container name when
-    #' the `run` command is flagged from the `start` command. Defaults to active project directory.
-    #'
-    #' @param name Character string of required name
-    set_name = function(name){
-      if(is.null(name)){
-        self$name <- tolower(basename(fs::path_wd()))
-      } else {
-        self$name <- tolower(name)
-      }
-      private$containr_name <- self$name
-      return(private$containr_name)
-    },
-
-    #' @description
     #' Set the tag of the image. This defaults to *latest* if left flagged as
     #' `NULL`.
     #'
     #' @param tag Character string to change tag name to specify the version of the base image. Setting `local_version` sets the
-    #' tag to use the local R version in the session. Or supply a specific R version number `R (>= 4.0.0)`.
+    #' tag to use the local R version currently installed on the system. Or supply a specific R version number `R (>= 4.0.0)`.
     set_tag = function(tag){
       if(isTRUE(is.null(tag))){
         self$tag <- "latest"
@@ -475,14 +476,17 @@ containr <- R6::R6Class("containr",
     view_meta = function(){
       meta <- list(
         containr = list(name = private$containr_name,
-                    tag = self$tag),
-        base = private$containr_image,
+                        tag = self$tag),
+        base_image = private$containr_image,
         created = private$containr_created,
         image_Id = private$containr_id,
-        packages = list(unknown = private$meta_unknown,
-                        github = private$meta_github,
-                        cran = private$meta_cran),
-        dockerfile = private$inst_dockerfile,
+        packages = list(unknown = list(Name = private$meta_unknown,
+                                       Version = private$meta_unknown_vers),
+                        github = list(Name = private$meta_github,
+                                      Version = private$meta_github_vers),
+                        cran = list(Name = private$meta_cran,
+                                    Version = private$meta_cran_vers)),
+        recipe = private$inst_dockerfile,
         tarfile = private$packaged_tar_info,
         log = private$out)
       return(meta)
@@ -495,8 +499,8 @@ containr <- R6::R6Class("containr",
 
   private = list(
 
-    proj_name = NULL,
-    proj_image = NULL,
+    #proj_name = NULL,
+    #proj_image = NULL,
     connected = FALSE,
     process = NULL,
     containr_pid = NULL,
@@ -536,8 +540,11 @@ containr <- R6::R6Class("containr",
     scripts = NULL,
     out = NULL,
     meta_unknown = NULL,
+    meta_unknown_vers = NULL,
     meta_github = NULL,
+    meta_github_vers = NULL,
     meta_cran = NULL,
+    meta_cran_vers = NULL,
     packaged_tar_info = NULL,
 
     # Build Process Functions -------------------------------------------------
@@ -590,7 +597,7 @@ containr <- R6::R6Class("containr",
             paste(""),
             paste("COPY", paste0("./docker/", basename(private$package)), "."),
             paste(""),
-            paste("RUN tar -xvzf ", "/home/rstudio/containr_0.1.5.9000.tar.gz"))
+            paste("RUN tar -xvzf", paste0("/home/rstudio/", basename(private$package))))
         },
         paste("")
       ),
@@ -657,19 +664,22 @@ containr <- R6::R6Class("containr",
 
         if(nrow(not_installed) > 0){
           private$meta_unknown <- not_installed$Package
+          private$meta_unknown_vers <- not_installed$Version
           cli::cli_alert_warning("{ {nrow(not_installed)}} Unknown Source Package{?s}")
           cli::cli_alert_warning("{.val {not_installed$Package}}")
         }
 
         if(nrow(Github) > 0){
           private$meta_github <- Github$Package
+          private$meta_github_vers <- Github$Version
           cli::cli_alert_info("Including { {nrow(Github)}} GitHub Package{?s}")
           cli::cli_alert_info("{.val {Github$Package}}")
         }
 
         if(nrow(CRAN) > 0){
           private$meta_cran <- CRAN$Package
-          cli::cli_alert_info("Including { {nrow(CRAN)}} GitHub Package{?s}")
+          private$meta_cran_vers <- CRAN$Version
+          cli::cli_alert_info("Including { {nrow(CRAN)}} CRAN Package{?s}")
           cli::cli_alert_info("{.val {CRAN$Package}}")
         }
 
