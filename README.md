@@ -10,33 +10,43 @@
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-A set of functions that I found handy during the development of the
-[repliCATS pipeline](https://replicats.research.unimelb.edu.au/) that
-I’ve ported into this package.
-
 ## Overview
 
 The key problems to irreproducibility of data in research is missing
 *documentation*, *version control* and *containerization*. `ContainR`
-seeks to address the container issue by making it easier to create the
-environment for a R project in a docker image without the need for in
-depth understanding of docker. The final product is a docker recipe and
-image with documented metadata for computational reproducibility.
+seeks to address these issues by making it easier to create the
+environment for a R project.
 
-The package ports the
+The package ports the pre-built
 [rocker-versioned](https://github.com/rocker-org/rocker-versioned2)
 Rstudio stacks and basic [Docker](https://docs.docker.com/reference/)
-commands to R. Based on whatever Rstudio project is currently active, it
-allows the user to create a Dockerfile with choices to include attached
-CRAN packages (including Github packages), include Python, Julia,
-jupyter, Pandoc etc. and launch the Rstudio container in a browser.
+commands to R. Based on the active working Rstudio project, it allows
+the user to create a Dockerfile and build a Docker image with Rstudio.
+Additional settings to include CRAN packages, Github packages, include
+Python, Julia, jupyter, Pandoc etc. and launch Rstudio container in a
+browser.
+
+**Outputs**
 
 Once the image has baked any additional packages into the base Rocker
-stack, the dockerfile can be saved for distribution and the image pushed
+stack, the Dockerfile can be saved for distribution and the image pushed
 to [DockerHub](https://hub.docker.com/). When a **ContainR session** is
 launched, your local config settings can also *cloned* into the session
-for previewing before hard coding the package directory into the docker
+for previewing before hard coding the package directory into the Docker
 image.
+
+The completed `containr/` folder is created with a `Dockerfile`, a tar
+of the package, a `scripts/install_additional.sh` file and an optional
+JSON file containing the Docker recipe to build the image. The image can
+be pushed to Dockerhub and the `containr/` file can be version
+controlled and/or shared with collaborators.
+
+    #> containr
+    #> ├── ContainR.json
+    #> ├── Dockerfile
+    #> ├── containr_0.1.5.9000.tar.gz
+    #> └── scripts
+    #>     └── install_additional.sh
 
 It is currently a work in progress and welcome any [issues and
 comments](https://github.com/psychtek/ContainR/issues).
@@ -46,8 +56,7 @@ comments](https://github.com/psychtek/ContainR/issues).
 ### System Requirements
 
 [Docker](https://docker-docs.netlify.app/install/) is required for the
-use of this package with support only tested for `R (>= 4.0.0)` base
-images.
+use of this package currently support only `R (>= 4.0.0)` base images.
 
 ### Installation
 
@@ -67,7 +76,7 @@ for [OSX](https://docs.docker.com/desktop/install/mac-install/),
 [Linux](https://docs.docker.com/engine/install/):
 
 ``` r
-docker_check()
+containr::docker_check()
 ```
 
 ### Rocker-Versioned Images
@@ -100,7 +109,8 @@ data_rocker_table |> dplyr::select(-base_image)
   `containr::data_rocker_table`.
 - **Create** a Dockerfile `containr$new()`.
 - **Build** a container `build_image(TRUE)`.
-- **Run** the container (Launches browser) `start()`.
+- **Run** the container `start()`.
+- **Launch** the session in a browser `launch()`.
 - **Stop** the container `stop()`
 
 #### Create a Dockerfile
@@ -115,10 +125,11 @@ packages = "loaded", copy = TRUE, include_python = TRUE)
 ```
 
 The return process from this function results in the creation of a
-`docker/Dockerfile` with additional scripts in the `docker/scripts/`
-directory. If any packages require install from Github, the function
-take note of these and attempt to add them to the install file as well.
-Any packages already installed on the base Rocker image will be skipped.
+`docker/Dockerfile` build recipe with additional scripts in the
+`docker/scripts/` directory. If any packages require install from
+Github, the function takes note of these and attempts to add them to the
+install file as well. Any packages already installed on the base Rocker
+image will be skipped.
 
 <img src="inst/figures/initialize.png" align="centre"/>
 
@@ -131,8 +142,7 @@ for your preferences and the **Status** will update automatically.
 
 <img src="inst/figures/print_settings_command.png" align="centre"/>
 
-The `proc()` will display the running container which at this point, we
-have nothing built or running:
+The `proc()` will display the Docker background process:
 
 <img src="inst/figures/check_process.png" align="centre"/>
 
@@ -151,15 +161,10 @@ be view with the `docker_images()` function.
 #### Start
 
 When this finished building the image is now ready to be started. The
-`start()` fun will launch the container in a background process but if
-we run the `proc()` then we can see that it is up and running.
+`start()` fun will launch the container in a background process and if
+we run the `proc()` command we see that it is up and running.
 
 <img src="inst/figures/process_active.png" align="centre"/>
-
-You can run the `docker_images()` to view the Docker register of built
-images.
-
-<img src="inst/figures/docker_images.png" align="centre"/>
 
 #### Launch
 
@@ -170,57 +175,53 @@ Running `launch()` will open a the session in a new browser window.
 Running `stop()` will stop the container session completely leaving the
 image built intact.
 
-## Docker Wrapper & Other Info
+## Docker Functions
 
-A basic docker wrapper is also included that will build functionality as
-development continues. Like the `containr` object, this is also a
-[R6](https://github.com/r-lib/R6) class object. Currently included are
-three functions:
+Basic Docker functions are also included and additional functionality
+for the Docker CLI will be added as development continues. These return
+tibbles to the console instead of the terminal. Currently included are
+four functions:
 
-- `docker_images()`: returns a tibble of built images. Equivalent
-  terminal command is `docker image ls` but it was difficult to work
-  with the terminal output so this now makes things easier to work
-  within R environment.
-
-- `docker_containers()`: Returns a tibble of active containers.
-  Equivalent terminal command is `docker container ls`.
-
-- `docker_search("rstudio")`: Returns a tibble of search results.
-
-To run a docker command you can do it direct:
+- `docker_check()`: Check if Docker is installed and running.
 
 ``` r
-containr::docker$new(process = "docker",
-    commands = "image",
-    options = "ls")$show_output()
-#> # A tibble: 2 × 5
-#>   Repository     Tag    ID           CreatedSince Size  
-#>   <chr>          <chr>  <chr>        <chr>        <chr> 
-#> 1 rocker/rstudio latest ce11a17ed477 5 weeks ago  1.75GB
-#> 2 alpine         latest 9c6f07244728 2 months ago 5.54MB
+containr::docker_check()
+#> ✔ Docker version 20.10.21, build baeda1f
 ```
 
-or with the included functions:
+- `docker_images()`: returns a tibble of built images.
 
 ``` r
 containr::docker_images()
-#> # A tibble: 2 × 5
-#>   Repository     Tag    ID           CreatedSince Size  
-#>   <chr>          <chr>  <chr>        <chr>        <chr> 
-#> 1 rocker/rstudio latest ce11a17ed477 5 weeks ago  1.75GB
-#> 2 alpine         latest 9c6f07244728 2 months ago 5.54MB
+#> # A tibble: 4 × 5
+#>   Repository      Tag    ID           CreatedSince   Size  
+#>   <chr>           <chr>  <chr>        <chr>          <chr> 
+#> 1 rstudio_pandoc  latest a2feb74b885b 44 minutes ago 2GB   
+#> 2 rstudio_py      latest ed6c79987814 2 hours ago    2.14GB
+#> 3 testing_rstudio latest adab64defd77 3 hours ago    1.79GB
+#> 4 rocker/rstudio  latest d110bab4d154 4 weeks ago    1.79GB
 ```
 
-Search dockerhub for images:
+- `docker_containers()`: Returns a tibble of active containers.
+
+``` r
+containr::docker_containers() |> dplyr::select(Command, CreatedAt, Image, Names, Ports, Status)
+#> # A tibble: 1 × 6
+#>   Command CreatedAt                      Image          Names       Ports Status
+#>   <chr>   <chr>                          <chr>          <chr>       <chr> <chr> 
+#> 1 /init   2022-12-02 13:42:07 +1100 AEDT rstudio_pandoc rstudio_pa… 127.… Up 30…
+```
+
+- `docker_search("rstudio")`: Returns a tibble of search results.
 
 ``` r
 containr::docker_search("rocker")
 #> # A tibble: 25 × 5
 #>    Name               Description                        StarC…¹ IsOff…² IsAut…³
 #>    <chr>              <chr>                                <int> <lgl>   <chr>  
-#>  1 rocker/rstudio     "RStudio Server image"                 399 NA      [OK]   
+#>  1 rocker/rstudio     "RStudio Server image"                 402 NA      [OK]   
 #>  2 rocker/shiny       ""                                     172 NA      [OK]   
-#>  3 rocker/tidyverse   "Version-stable build of R, rstud…     157 NA      [OK]   
+#>  3 rocker/tidyverse   "Version-stable build of R, rstud…     158 NA      [OK]   
 #>  4 rocker/r-base      "Basic R for Rocker And Official …      81 NA      [OK]   
 #>  5 rocker/verse       "Adds tex & related publishing pa…      64 NA      [OK]   
 #>  6 rocker/r-ver       "Reproducible builds to fixed ver…      50 NA      [OK]   
@@ -231,10 +232,6 @@ containr::docker_search("rocker")
 #> # … with 15 more rows, and abbreviated variable names ¹​StarCount, ²​IsOfficial,
 #> #   ³​IsAutomated
 ```
-
-> Note that tibble output has only been included for the `image`,
-> `container` and `search` commands for now. This will be expanded over
-> the course of development and value any comments or feedback.
 
 ------------------------------------------------------------------------
 
