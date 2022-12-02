@@ -59,7 +59,7 @@ containr <- R6::R6Class("containr",
     #' Additional packages can be setup to install with the `include_` flags.
     image = NULL,
 
-    #' @field name Name of the containr when launched. Defaults to the active Rstudio Project.
+    #' @field name Name of the containr when launched. Defaults to the active Rstudio project name.
     name = NULL,
 
     #' @field tag Tag of image defaults to `latest` if nothing set.
@@ -68,7 +68,7 @@ containr <- R6::R6Class("containr",
     #' @field packages Provide a string of either `loaded`, `installed` or `none`.
     packages = NULL,
 
-    #' @field dockerfile Location of the dockerfile. Is set to `docker/Dockerfile/` directory.
+    #' @field dockerfile Location of the Dockerfile. Is set to `containr/Dockerfile/` directory.
     dockerfile = NULL,
 
     #' @field copy Hard copy the current project working directory to build and setup directory on the image.
@@ -124,17 +124,18 @@ containr <- R6::R6Class("containr",
     #' Start a ContainR
     #'
     #' @description
-    #' Initialise and build a new `containr` image from a RStudio Rocker image and save the image to
-    #' Dockerhub and a folder with build metadata.
+    #' Initialise and build a new `containr` image from a RStudio Rocker image.
+    #'
+    #' @return R6 object with configured build settings.
     #'
     #' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
     #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
     #' visit \url{https://rocker-project.org/images/}. If you ran `build_image(TRUE)` then
-    #' this argument update the string of the *name* of the build. Built container images can be
+    #' this argument updates the string of the *name* of the build. Built container images can be
     #' view by running the `docker_images()` function.
     #'
-    #' @param name The name of the containr image to build for the docker process to launch. If none is applied then
-    #' it will default to the working Rstudio project directory.
+    #' @param name The name of the containr image to build for the Docker process to launch. If none is applied then
+    #' it will default to the working Rstudio project directory name.
     #'
     #' @param tag A character string of the require version. If no tag is supplied then the function will default to `latest`.
     #'
@@ -143,13 +144,13 @@ containr <- R6::R6Class("containr",
     #' Note that already installed packages on the image are skipped when the `build_image` command is run. If you have a large package library it is
     #' recommended to only install `loaded` as you develop your workflow.
     #'
-    #' @param dockerfile A Dockerfile recipe to create a Docker image. Default location is in the `docker/` folder. Build will save the final `Dockerfile`
+    #' @param dockerfile A Dockerfile recipe to create a Docker image. Default location is in the `containr/` folder. Build will save the final `Dockerfile`
     #' to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
     #' an active project into a **Rstudio** container from one of the Rocker images: \url{https://rocker-project.org/images/}. Suggest
     #' leaving blank for defaults.
     #'
     #' @param copy This will run the CMD Check function and create a tar file and update the Dockerfile to
-    #' unpack this into the directory under `/home/rstudio/` that was set under `name` parameter.
+    #' unpack this into the directory `/home/rstudio/` on the Rstudio image.
     #'
     #' @param preview Preview the base image in a Rstudio session in a browser with cloned local settings like theme, config and environment.
     #'
@@ -214,7 +215,7 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' Name of the built image and used as container name when
-    #' the `run` command is flagged from the `start` command. Defaults to active project directory.
+    #' the `run` command is flagged from the `start` command. Defaults to active project directory name.
     #'
     #' @param name Character string of required name
     set_name = function(name){
@@ -266,10 +267,11 @@ containr <- R6::R6Class("containr",
 
     #' @description
     #' This is used to set the pointer to where the `Dockerfile` is located.
-    #' @param dockerfile Character string to `Dockerfile`. Defaults to the `docker/Dockerfile`
-    #' directory and recommened leaving as is.
+    #'
+    #' @param dockerfile Character string to `Dockerfile`. Defaults to the `containr/Dockerfile`
+    #' directory and recommend leaving as is.
     set_dockerfile = function(dockerfile){
-      if(is.null(dockerfile)) {dockerfile <- "docker/Dockerfile"}
+      if(is.null(dockerfile)) {dockerfile <- "containr/Dockerfile"}
       self$dockerfile <- dockerfile
       private$containr_dockerfile <- self$dockerfile
       return(private$containr_dockerfile)
@@ -279,7 +281,7 @@ containr <- R6::R6Class("containr",
     #' Setting for which packages to append to the build install script.
     #'
     #' @param packages A character string of `c("loaded", "none", "installed")`. Where `loaded` installs attached
-    #' packages or what is in the `DESCRIPTION` file. The `installed` string will install *all the things* - this will
+    #' packages. The `installed` string will install *all the things* - this will
     #' need to be used with care if you have a large R library. The `none` character string doesnt install any packages.
     set_packages = function(packages){
       self$packages <- match.arg(packages, c("loaded", "none", "installed"))
@@ -288,11 +290,11 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Flag to set the Rstudio login. When the `launch()` fun is run the browser will opeen and
-    #' this setting bypasses the need for a password.
+    #' Create a tar of the RStudio project to copy into an image.
     #'
-    #' @param copy Set to enable the Rstudio Login. Set to `TRUE` until secure
-    #' env is setup.
+    #' @param copy Set to `TRUE` will run the `CMD BUILD` and create a tar of the active package for unpacking
+    #' in the Rstudio image.
+    #'
     set_copy = function(copy){
       self$copy <- copy
       private$COPY <-  self$copy
@@ -301,8 +303,10 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Port local config and theme settings. Option setting to port the local
-    #' config and panel settings into the container session.
+    #' Port local config and theme settings. Optional setting to port the local
+    #' config and panel settings into the container session. This is good for previewing an image
+    #' before building your stack.
+    #'
     #' @param preview Flag `TRUE` to port local settings or `FALSE` for a clean session.
     set_preview = function(preview){
       self$preview <- preview
@@ -310,7 +314,7 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Start the predefined containr as set by the `name` argument.
+    #' Start the predefined containr as set by the `[set_name] argument.
     start = function(){
       private$containr_start()
       self$proc()
@@ -343,7 +347,8 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Starts the build process and updates the `print` status.
+    #' Starts the process to build a Docker image.
+    #'
     #' @param build Set flag for build
     build_image = function(build){
 
@@ -410,8 +415,8 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' `containr$info()` shows some information about the
-    #' process on the screen, whether it is running and it's process id, etc.
+    #' [print] displays information about the process on the console.
+    #'
     print = function(){
       cli::cli_h1("ContainR")
 
@@ -452,7 +457,7 @@ containr <- R6::R6Class("containr",
           cli::col_green(self$build),
           cli::col_yellow(self$build)),
 
-        "{.strong | Dockerfile}" = cli::style_hyperlink("{.file docker/Dockerfile}",
+        "{.strong | Dockerfile}" = cli::style_hyperlink("{.file containr/Dockerfile}",
           fs::path_real(private$containr_dockerfile)),
 
         "{.strong Run Command}",
@@ -472,7 +477,9 @@ containr <- R6::R6Class("containr",
       return(cmd)
     },
 
-    #' @description WIP to store all settings. Possible for saving to json or object for later use.
+    #' @description
+    #' WIP to store all settings and view as a list. Use [save_json] to save the full list
+    #' to `JSON` formatted file.
     view_meta = function(){
       meta <- list(
         containr = list(name = private$containr_name,
@@ -490,6 +497,14 @@ containr <- R6::R6Class("containr",
         tarfile = private$packaged_tar_info,
         log = private$out)
       return(meta)
+    },
+
+    #' @description
+    #' This will take the [view_meta] information and save it to the `containr` directory.
+    save_json = function(){
+      file_path <- paste0("containr/", basename(fs::path_wd()), ".json")
+      #jsonlite::toJSON(self$view_meta(), pretty = TRUE)
+      jsonlite::write_json(self$view_meta(), path = file_path)
     }
 
   ),
@@ -583,7 +598,7 @@ containr <- R6::R6Class("containr",
         },
         paste(""),
         if(private$containr_packages %in% c("loaded", "installed")){
-          c(paste("COPY /docker/scripts/install_additional.sh /tmp/"),
+          c(paste("COPY /containr/scripts/install_additional.sh /tmp/"),
             paste(""),
             paste("RUN chmod +x /tmp/install_additional.sh"),
             paste(""),
@@ -595,7 +610,7 @@ containr <- R6::R6Class("containr",
             paste(""),
             paste("WORKDIR /home/rstudio"),
             paste(""),
-            paste("COPY", paste0("./docker/", basename(private$package)), "."),
+            paste("COPY", paste0("./containr/", basename(private$package)), "."),
             paste(""),
             paste("RUN tar -xvzf", paste0("/home/rstudio/", basename(private$package))))
         },
@@ -615,9 +630,8 @@ containr <- R6::R6Class("containr",
 
     setup_packages = function(){
       packages <- private$containr_packages
-      bash_file <- "docker/scripts/install_additional.sh"
+      bash_file <- "containr/scripts/install_additional.sh"
       # TODO set packages option to use renv file
-      # TODO set packages to install from description
       if(packages %in% "none"){
         private$reset_dir()
         private$create_directories()
@@ -735,7 +749,7 @@ containr <- R6::R6Class("containr",
         writeLines(installR_script, con = bash_file, sep = "")
 
         if(length(readLines(bash_file)) > 0){
-          fs::dir_tree("docker")
+          fs::dir_tree("containr")
           cli::cli_alert_success("Package Installs Script Updated: {.path {bash_file}}")
         }
       }
@@ -743,8 +757,8 @@ containr <- R6::R6Class("containr",
 
     create_directories = function(){
 
-      if(!fs::dir_exists("docker")) {
-        fs::dir_create("docker")
+      if(!fs::dir_exists("containr")) {
+        fs::dir_create("containr")
       }
 
       if(isTRUE(private$COPY)){
@@ -753,9 +767,9 @@ containr <- R6::R6Class("containr",
           path = pack_dir, vignettes = FALSE)
 
         fs::file_copy(path = private$package,
-          new_path = "docker", overwrite = TRUE)
+          new_path = "containr", overwrite = TRUE)
 
-        get_tar_file <- list.files("docker", pattern = ".tar.gz$", full.names = TRUE)
+        get_tar_file <- list.files("containr", pattern = ".tar.gz$", full.names = TRUE)
         if(isTRUE(fs::file_exists(get_tar_file))) {
           private$packaged_tar_info <- fs::file_info(get_tar_file)
           cli::cli_alert_success("Archived Project Saved: {.file {get_tar_file}}")
@@ -763,25 +777,25 @@ containr <- R6::R6Class("containr",
       }
 
       if(private$containr_packages %in% c("loaded", "installed")){
-        if(!fs::dir_exists("docker/scripts")) {
-          fs::dir_create("docker/scripts")
+        if(!fs::dir_exists("containr/scripts")) {
+          fs::dir_create("containr/scripts")
         }
 
-        if(!fs::file_exists("docker/scripts/install_additional.sh")) {
-          fs::file_create("docker/scripts/install_additional.sh")
+        if(!fs::file_exists("containr/scripts/install_additional.sh")) {
+          fs::file_create("containr/scripts/install_additional.sh")
         }
       }
 
-      if(!fs::file_exists("docker/Dockerfile")) {
-        fs::file_create("docker/Dockerfile")
+      if(!fs::file_exists("containr/Dockerfile")) {
+        fs::file_create("containr/Dockerfile")
       }
 
     },
 
     reset_dir = function(){
       cli::cli_h2("Resetting Docker Folder")
-      if(fs::dir_exists("docker")) {
-        fs::dir_delete("docker")
+      if(fs::dir_exists("containr")) {
+        fs::dir_delete("containr")
       }
     },
 
@@ -840,7 +854,10 @@ containr <- R6::R6Class("containr",
       return(proc_args)
     },
 
-    containr_start = function(){ #TODO add check message for running when started
+    containr_start = function(){
+
+      if(isTRUE(private$connected)) cli::cli_abort("Containr Already Started")
+
       cmd <- private$setup_command()
 
       private$process <- processx::process$new(

@@ -78,17 +78,17 @@ Useful links:
 \item{\code{image}}{Name of the image from either the \link{data_rocker_table} or in docker register.
 Additional packages can be setup to install with the \code{include_} flags.}
 
-\item{\code{name}}{Name of the containr when launched. Defaults to the active Rstudio Project.}
+\item{\code{name}}{Name of the containr when launched. Defaults to the active Rstudio project name.}
 
 \item{\code{tag}}{Tag of image defaults to \code{latest} if nothing set.}
 
 \item{\code{packages}}{Provide a string of either \code{loaded}, \code{installed} or \code{none}.}
 
-\item{\code{dockerfile}}{Location of the dockerfile. Is set to \verb{docker/Dockerfile/} directory.}
+\item{\code{dockerfile}}{Location of the Dockerfile. Is set to \verb{containr/Dockerfile/} directory.}
 
-\item{\code{copy}}{Hard copy working directory to build and setup directory on the image.}
+\item{\code{copy}}{Hard copy the current project working directory to build and setup directory on the image.}
 
-\item{\code{preview}}{Preview the image with volume mounts of working directory.
+\item{\code{preview}}{Preview the image with volume mounts of the current project working directory.
 This will clone local config and panel settings for testing in the session and will
 automatically switch off when building a new image.}
 
@@ -129,8 +129,8 @@ Start a ContainR}
 \itemize{
 \item \href{#method-containr-new}{\code{containr$new()}}
 \item \href{#method-containr-set_flags}{\code{containr$set_flags()}}
-\item \href{#method-containr-set_image}{\code{containr$set_image()}}
 \item \href{#method-containr-set_name}{\code{containr$set_name()}}
+\item \href{#method-containr-set_image}{\code{containr$set_image()}}
 \item \href{#method-containr-set_tag}{\code{containr$set_tag()}}
 \item \href{#method-containr-set_dockerfile}{\code{containr$set_dockerfile()}}
 \item \href{#method-containr-set_packages}{\code{containr$set_packages()}}
@@ -145,13 +145,14 @@ Start a ContainR}
 \item \href{#method-containr-print}{\code{containr$print()}}
 \item \href{#method-containr-get_cmd}{\code{containr$get_cmd()}}
 \item \href{#method-containr-view_meta}{\code{containr$view_meta()}}
+\item \href{#method-containr-save_json}{\code{containr$save_json()}}
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-containr-new"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-new}{}}}
 \subsection{Method \code{new()}}{
-Setup and start a new \code{containr} in the background.
+Initialise and build a new \code{containr} image from a RStudio Rocker image.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$new(
   image = "rstudio",
@@ -183,26 +184,26 @@ Setup and start a new \code{containr} in the background.
 \item{\code{image}}{Repository Name of rocker image from \link{data_rocker_table}. Defaults to
 the \code{rstudio} stack \code{rocker/rstudio:latest}. For more information about each stack
 visit \url{https://rocker-project.org/images/}. If you ran \code{build_image(TRUE)} then
-this argument update the string of the \emph{name} of the build. Built container images can be
+this argument updates the string of the \emph{name} of the build. Built container images can be
 view by running the \code{docker_images()} function.}
 
-\item{\code{name}}{The name of the containr image to build for the docker process to launch. If none is applied then
-it will default to the working Rstudio project directory.}
+\item{\code{name}}{The name of the containr image to build for the Docker process to launch. If none is applied then
+it will default to the working Rstudio project directory name.}
 
 \item{\code{tag}}{A character string of the require version. If no tag is supplied then the function will default to \code{latest}.}
 
 \item{\code{packages}}{Provide a string of either \code{loaded}, \code{installed} or \code{none}. \code{Loaded} will included packages that are currently
-loaded in your active project session. The \code{installed} string will included everything inside you local default R library. Already
-installed packages are skipped when the \code{build_image} command is run. If you have a large package library it is
+loaded in your active project session. The \code{installed} string will included everything inside you local default R library.
+Note that already installed packages on the image are skipped when the \code{build_image} command is run. If you have a large package library it is
 recommended to only install \code{loaded} as you develop your workflow.}
 
-\item{\code{dockerfile}}{A Dockerfile recipe to create a Docker image. Default location is in the \verb{docker/} folder. Build will save the final \code{Dockerfile}
+\item{\code{dockerfile}}{A Dockerfile recipe to create a Docker image. Default location is in the \verb{containr/} folder. Build will save the final \code{Dockerfile}
 to this location at the root project directory. You can also add you're own Dockerfile, however, this package was primarily designed to launch
 an active project into a \strong{Rstudio} container from one of the Rocker images: \url{https://rocker-project.org/images/}. Suggest
 leaving blank for defaults.}
 
-\item{\code{copy}}{This will run the CMD Check function and creat a tar file and update the Dockerfile to
-unpack this into the directory under \verb{/home/rstudio/} that was set under \code{name} parameter.}
+\item{\code{copy}}{This will run the CMD Check function and create a tar file and update the Dockerfile to
+unpack this into the directory \verb{/home/rstudio/} on the Rstudio image.}
 
 \item{\code{preview}}{Preview the base image in a Rstudio session in a browser with cloned local settings like theme, config and environment.}
 
@@ -210,6 +211,9 @@ unpack this into the directory under \verb{/home/rstudio/} that was set under \c
 current settings with the \code{print()} method and then \code{build_image(TRUE)} to start the process. This can take some time so grab a coffee.}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+R6 object with configured build settings.
 }
 }
 \if{html}{\out{<hr>}}
@@ -221,6 +225,24 @@ Sets the include flags for additional scripts to run
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_flags()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-containr-set_name"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-set_name}{}}}
+\subsection{Method \code{set_name()}}{
+Name of the built image and used as container name when
+the \code{run} command is flagged from the \code{start} command. Defaults to active project directory name.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{containr$set_name(name)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{name}}{Character string of required name}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-containr-set_image"></a>}}
@@ -241,24 +263,6 @@ to include python with the relevant \code{include_} functions.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-containr-set_name"></a>}}
-\if{latex}{\out{\hypertarget{method-containr-set_name}{}}}
-\subsection{Method \code{set_name()}}{
-Name of the built image and used as container name when
-the \code{run} command is flagged from the \code{start} command. Defaults to active project directory.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{containr$set_name(name)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{name}}{Character string of required name}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-containr-set_tag"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_tag}{}}}
 \subsection{Method \code{set_tag()}}{
@@ -272,7 +276,7 @@ Set the tag of the image. This defaults to \emph{latest} if left flagged as
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{tag}}{Character string to change tag name to specify the version of the base image. Setting \code{local_version} sets the
-tag to use the local R version in the session. Or supply a specific R version number \verb{R (>= 4.0.0)}.}
+tag to use the local R version currently installed on the system. Or supply a specific R version number \verb{R (>= 4.0.0)}.}
 }
 \if{html}{\out{</div>}}
 }
@@ -289,8 +293,8 @@ This is used to set the pointer to where the \code{Dockerfile} is located.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{dockerfile}}{Character string to \code{Dockerfile}. Defaults to the \code{docker/Dockerfile}
-directory and recommened leaving as is.}
+\item{\code{dockerfile}}{Character string to \code{Dockerfile}. Defaults to the \code{containr/Dockerfile}
+directory and recommend leaving as is.}
 }
 \if{html}{\out{</div>}}
 }
@@ -308,7 +312,7 @@ Setting for which packages to append to the build install script.
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{packages}}{A character string of \code{c("loaded", "none", "installed")}. Where \code{loaded} installs attached
-packages or what is in the \code{DESCRIPTION} file. The \code{installed} string will install \emph{all the things} - this will
+packages. The \code{installed} string will install \emph{all the things} - this will
 need to be used with care if you have a large R library. The \code{none} character string doesnt install any packages.}
 }
 \if{html}{\out{</div>}}
@@ -318,8 +322,7 @@ need to be used with care if you have a large R library. The \code{none} charact
 \if{html}{\out{<a id="method-containr-set_copy"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_copy}{}}}
 \subsection{Method \code{set_copy()}}{
-Flag to set the Rstudio login. When the \code{launch()} fun is run the browser will opeen and
-this setting bypasses the need for a password.
+Create a tar of the RStudio project to copy into an image.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_copy(copy)}\if{html}{\out{</div>}}
 }
@@ -327,8 +330,8 @@ this setting bypasses the need for a password.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{copy}}{Set to enable the Rstudio Login. Set to \code{TRUE} until secure
-env is setup.}
+\item{\code{copy}}{Set to \code{TRUE} will run the \verb{CMD BUILD} and create a tar of the active package for unpacking
+in the Rstudio image.}
 }
 \if{html}{\out{</div>}}
 }
@@ -337,8 +340,9 @@ env is setup.}
 \if{html}{\out{<a id="method-containr-set_preview"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_preview}{}}}
 \subsection{Method \code{set_preview()}}{
-Port local config and theme settings. Option setting to port the local
-config and panel settings into the container session.
+Port local config and theme settings. Optional setting to port the local
+config and panel settings into the container session. This is good for previewing an image
+before building your stack.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_preview(preview)}\if{html}{\out{</div>}}
 }
@@ -355,7 +359,7 @@ config and panel settings into the container session.
 \if{html}{\out{<a id="method-containr-start"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-start}{}}}
 \subsection{Method \code{start()}}{
-Start the predefined containr as set by the \code{name} argument.
+Start the predefined containr as set by the `\link{set_name} argument.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$start()}\if{html}{\out{</div>}}
 }
@@ -395,7 +399,7 @@ Opens the active containr in a browser.
 \if{html}{\out{<a id="method-containr-build_image"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-build_image}{}}}
 \subsection{Method \code{build_image()}}{
-Starts the build process and updates the \code{print} status.
+Starts the process to build a Docker image.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$build_image(build)}\if{html}{\out{</div>}}
 }
@@ -422,8 +426,7 @@ Displays the process information of the active containr.
 \if{html}{\out{<a id="method-containr-print"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-print}{}}}
 \subsection{Method \code{print()}}{
-\code{containr$info()} shows some information about the
-process on the screen, whether it is running and it's process id, etc.
+\link{print} displays information about the process on the console.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$print()}\if{html}{\out{</div>}}
 }
@@ -443,9 +446,20 @@ Returns a character string of the run command.
 \if{html}{\out{<a id="method-containr-view_meta"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-view_meta}{}}}
 \subsection{Method \code{view_meta()}}{
-WIP to store all settings. Possible for saving to json or object for later use.
+WIP to store all settings and view as a list. Use \link{save_json} to save the full list
+to \code{JSON} formatted file.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$view_meta()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-containr-save_json"></a>}}
+\if{latex}{\out{\hypertarget{method-containr-save_json}{}}}
+\subsection{Method \code{save_json()}}{
+This will take the \link{view_meta} information and save it to the \code{containr} directory.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{containr$save_json()}\if{html}{\out{</div>}}
 }
 
 }
