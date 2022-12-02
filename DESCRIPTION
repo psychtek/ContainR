@@ -10,9 +10,9 @@ Description: Launch a project into a Rocker versioned container or custom image.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.2
 SystemRequirements: docker
-URL: https://github.com/psychtek/ContainR
+URL: https://github.com/psychtek/ContainR, https://rocker-project.org/images/
 BugReports: https://github.com/psychtek/ContainR/issues
 Imports:
     cli,
@@ -20,7 +20,6 @@ Imports:
     crayon,
     sys,
     processx,
-    rlang,
     jsonlite,
     tidyr
 Depends: 

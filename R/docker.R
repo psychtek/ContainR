@@ -7,6 +7,8 @@
 docker <- R6::R6Class(
   classname = "docker",
   cloneable = FALSE,
+  lock_objects = FALSE,
+  lock_class = TRUE,
 
   public = list(
 
@@ -198,7 +200,6 @@ docker <- R6::R6Class(
 #'
 #' Display a table of images in the docker register
 #'
-#' @importFrom rlang .data
 #' @export
 docker_images <- function(){
 
@@ -207,7 +208,7 @@ docker_images <- function(){
     options = "ls")$show_output()
 
   dock_images |>
-    dplyr::select(.data$Repository, .data$ID, .data$Tag, .data$Size)
+    dplyr::select(Repository, ID, Tag, Size)
 
 }
 
