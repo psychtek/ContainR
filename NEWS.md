@@ -1,5 +1,14 @@
 <!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
 
+# containr 0.1.5.9001
+
+- Test edits.
+- `NAMESPACE` documentation updates
+- Added `info` command.
+- Documentation
+- Updates to `docker` class
+
+
 # containr 0.1.5.9000
 
 - Updated documentation description for clearer definition of R6 class.
