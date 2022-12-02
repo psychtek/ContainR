@@ -3,11 +3,11 @@
 test_that("Setup dockerfile build ", {
 
   withr::with_tempdir({
-  temp_dockerfile <- "docker/Dockerfile"
+  temp_dockerfile <- "containr/Dockerfile"
 
   docker_file <- containr$new(name = "testing",
     image = "rstudio",
-    dockerfile = "docker/Dockerfile",
+    #dockerfile = "containr/Dockerfile",
     packages = "none",
     tag = "latest",
     build = FALSE)
@@ -37,12 +37,12 @@ test_that("Creates Dockerfiles and folders", {
   withr::with_tempdir({
     docker_file <- containr$new(name = "testing",
       image = "rstudio",
-      dockerfile = "docker/Dockerfile",
+      #dockerfile = "containr/Dockerfile",
       packages = "none",
       tag = "latest",
       build = FALSE)
-    expect_true(fs::dir_exists("docker"))
-    expect_true(fs::file_exists("docker/Dockerfile"))
+    expect_true(fs::dir_exists("containr"))
+    expect_true(fs::file_exists("containr/Dockerfile"))
   },
     clean = TRUE)
 })
@@ -93,7 +93,7 @@ test_that("Change containr settings", {
   withr::with_tempdir({
     docker_file <- containr$new(name = "testing",
       image = "rstudio",
-      dockerfile = "docker/Dockerfile",
+      #dockerfile = "containr/Dockerfile",
       packages = "none",
       tag = "latest",
       build = FALSE)
@@ -110,7 +110,7 @@ test_that("Errors on non rocker image", {
   withr::with_tempdir({
     expect_error(containr$new(name = "testing",
       image = "none",
-      dockerfile = "docker/Dockerfile",
+      #dockerfile = "containr/Dockerfile",
       packages = "none",
       tag = "latest",
       build = FALSE))

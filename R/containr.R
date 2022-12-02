@@ -154,8 +154,34 @@ containr <- R6::R6Class("containr",
     #'
     #' @param preview Preview the base image in a Rstudio session in a browser with cloned local settings like theme, config and environment.
     #'
+    #' @param build Status of build
+    #'
     #' @param build_image This is the flag set to `FALSE` for when the settings are in place for the Docker process to build. View the
-    #' current settings with the `print()` method and then `build_image(TRUE)` to start the process. This can take some time so grab a coffee.
+    #' current settings with the `print()` method and then `build_image(TRUE)` to start the process. This can take some time so grab a coffee!
+    #'
+    #' @param include_py Install python
+    #'
+    #' @param include_pyenv Include python env
+    #'
+    #' @param include_tensor Install tensor `Untested`
+    #'
+    #' @param include_geo Install geo `Untested`
+    #'
+    #' @param include_quarto Install quarto
+    #'
+    #' @param include_tex Install text
+    #'
+    #' @param include_julia Install Julia `Untested`
+    #'
+    #' @param include_jupyter Add Juypter notebook support `Untested`
+    #'
+    #' @param include_tidy Install tidy
+    #'
+    #' @param include_verse Install verse
+    #'
+    #' @param include_pandoc Install pandoc
+    #'
+    #' @param include_shiny Install Shiny server`Untested`
     #'
     initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL,
       copy = FALSE, preview = TRUE, build = FALSE, include_py = FALSE, include_pyenv = FALSE,
@@ -214,8 +240,7 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Name of the built image and used as container name when
-    #' the `run` command is flagged from the `start` command. Defaults to active project directory name.
+    #' Name of the built image and used as container name. Defaults to the active project directory name.
     #'
     #' @param name Character string of required name
     set_name = function(name){
@@ -314,7 +339,7 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' Start the predefined containr as set by the `[set_name] argument.
+    #' Start the predefined containr as set by the `set_name` argument.
     start = function(){
       private$containr_start()
       self$proc()
@@ -415,7 +440,7 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' [print] displays information about the process on the console.
+    #' `print()` displays information about the process on the console.
     #'
     print = function(){
       cli::cli_h1("ContainR")
@@ -478,7 +503,7 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' WIP to store all settings and view as a list. Use [save_json] to save the full list
+    #' WIP to store all settings and view as a list. Use `save_json()` to save the full list
     #' to `JSON` formatted file.
     view_meta = function(){
       meta <- list(
@@ -500,7 +525,7 @@ containr <- R6::R6Class("containr",
     },
 
     #' @description
-    #' This will take the [view_meta] information and save it to the `containr` directory.
+    #' This will take the `view_meta()` information and save it to the `containr` directory.
     save_json = function(){
       file_path <- paste0("containr/", basename(fs::path_wd()), ".json")
       #jsonlite::toJSON(self$view_meta(), pretty = TRUE)

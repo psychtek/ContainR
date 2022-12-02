@@ -207,8 +207,34 @@ unpack this into the directory \verb{/home/rstudio/} on the Rstudio image.}
 
 \item{\code{preview}}{Preview the base image in a Rstudio session in a browser with cloned local settings like theme, config and environment.}
 
+\item{\code{build}}{Status of build}
+
+\item{\code{include_py}}{Install python}
+
+\item{\code{include_pyenv}}{Include python env}
+
+\item{\code{include_tensor}}{Install tensor \code{Untested}}
+
+\item{\code{include_geo}}{Install geo \code{Untested}}
+
+\item{\code{include_quarto}}{Install quarto}
+
+\item{\code{include_tex}}{Install text}
+
+\item{\code{include_julia}}{Install Julia \code{Untested}}
+
+\item{\code{include_jupyter}}{Add Juypter notebook support \code{Untested}}
+
+\item{\code{include_tidy}}{Install tidy}
+
+\item{\code{include_verse}}{Install verse}
+
+\item{\code{include_pandoc}}{Install pandoc}
+
+\item{\code{include_shiny}}{Install Shiny server\code{Untested}}
+
 \item{\code{build_image}}{This is the flag set to \code{FALSE} for when the settings are in place for the Docker process to build. View the
-current settings with the \code{print()} method and then \code{build_image(TRUE)} to start the process. This can take some time so grab a coffee.}
+current settings with the \code{print()} method and then \code{build_image(TRUE)} to start the process. This can take some time so grab a coffee!}
 }
 \if{html}{\out{</div>}}
 }
@@ -230,8 +256,7 @@ Sets the include flags for additional scripts to run
 \if{html}{\out{<a id="method-containr-set_name"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-set_name}{}}}
 \subsection{Method \code{set_name()}}{
-Name of the built image and used as container name when
-the \code{run} command is flagged from the \code{start} command. Defaults to active project directory name.
+Name of the built image and used as container name. Defaults to the active project directory name.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$set_name(name)}\if{html}{\out{</div>}}
 }
@@ -359,7 +384,7 @@ before building your stack.
 \if{html}{\out{<a id="method-containr-start"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-start}{}}}
 \subsection{Method \code{start()}}{
-Start the predefined containr as set by the `\link{set_name} argument.
+Start the predefined containr as set by the \code{set_name} argument.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$start()}\if{html}{\out{</div>}}
 }
@@ -426,7 +451,7 @@ Displays the process information of the active containr.
 \if{html}{\out{<a id="method-containr-print"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-print}{}}}
 \subsection{Method \code{print()}}{
-\link{print} displays information about the process on the console.
+\code{print()} displays information about the process on the console.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$print()}\if{html}{\out{</div>}}
 }
@@ -446,7 +471,7 @@ Returns a character string of the run command.
 \if{html}{\out{<a id="method-containr-view_meta"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-view_meta}{}}}
 \subsection{Method \code{view_meta()}}{
-WIP to store all settings and view as a list. Use \link{save_json} to save the full list
+WIP to store all settings and view as a list. Use \code{save_json()} to save the full list
 to \code{JSON} formatted file.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$view_meta()}\if{html}{\out{</div>}}
@@ -457,7 +482,7 @@ to \code{JSON} formatted file.
 \if{html}{\out{<a id="method-containr-save_json"></a>}}
 \if{latex}{\out{\hypertarget{method-containr-save_json}{}}}
 \subsection{Method \code{save_json()}}{
-This will take the \link{view_meta} information and save it to the \code{containr} directory.
+This will take the \code{view_meta()} information and save it to the \code{containr} directory.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{containr$save_json()}\if{html}{\out{</div>}}
 }
