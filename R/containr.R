@@ -1,12 +1,15 @@
-#' @include docker.R
 #' @title containr Class Object
 #'
 #' @description
-#' A R6 class object of `containr` that sets up a object to launch a defined rocker
-#' containr in a browser. This function creates a dockerfile based off the rocker version image stacks and reads
-#' from session information to install `loaded `, `installed` \(or `none`\) R libraries. The internal `install2.r` handles
-#' additional package installs and will skip already installed packages on the rocker stack image. The final `Dockerfile`
-#' can be used to build a container image with your development environment.
+#' A R6 class object of `containr`
+#'
+#' @details
+#' The general concept of this package is to aid in containerization of a workflow.
+#' A workflow could be a simple analysis script to a complex pipeline however, capturing
+#' the system ecosystem with all the additional libraries and packages are often an afterthought.
+#' `ContainR` package is an attempt to be an easier implementation of Rstudio containers ported
+#' from the cool developers at \url{https://rocker-project.org/images/}. This package is both a wrapper
+#' with Docker support to build an image and clone a workflow and packages into a Rstudio image.
 #'
 #' @section Rockered:
 #' Creates a new `containr` object based on one of
@@ -14,13 +17,6 @@
 #' The `DISABLE_AUTH=TRUE`has been set as default so each session logs in direct without needing
 #' a password.
 #'
-#' @section Computational Reproducibility:
-#' The general concept of this package is to aid in containerization of a workflow.
-#' A workflow could be a simple analysis script to a complex pipeline however, capturing
-#' the system ecosystem with all the additional libraries and packages are often an afterthought.
-#' `ContainR` package is an attempt to be an easier implementation of Rstudio containers ported
-#' from the cool developers at \url{https://rocker-project.org/images/}. This package is both a wrapper
-#' with Docker support to build an image and clone a workflow and packages into a Rstudio image.
 #'
 #' @section Setup:
 #' To get started, load a RStudio project and attached any libraries. The default base image *rstudio*
@@ -44,89 +40,18 @@
 #' cont$stop() # stop the container
 #' ```
 #'
-#'
 #' @export
 containr <- R6::R6Class("containr",
   cloneable = FALSE,
   lock_class = TRUE,
-  lock_objects = TRUE,
-
-  # Public Functions --------------------------------------------------------
+  lock_objects = FALSE,
 
   public = list(
 
-    #' @field image Name of the image from either the [data_rocker_table] or in docker register.
-    #' Additional packages can be setup to install with the `include_` flags.
-    image = NULL,
-
-    #' @field name Name of the containr when launched. Defaults to the active Rstudio project name.
-    name = NULL,
-
-    #' @field tag Tag of image defaults to `latest` if nothing set.
-    tag = NULL,
-
-    #' @field packages Provide a string of either `loaded`, `installed` or `none`.
-    packages = NULL,
-
-    #' @field dockerfile Location of the Dockerfile. Is set to `containr/Dockerfile/` directory.
-    dockerfile = NULL,
-
-    #' @field copy Hard copy the current project working directory to build and setup directory on the image.
-    copy = FALSE,
-
-    #' @field preview Preview the image with volume mounts of the current project working directory.
-    #' This will clone local config and panel settings for testing in the session and will
-    #' automatically switch off when building a new image.
-    preview = TRUE,
-
-    #' @field build Default is `FALSE`. Set to `TRUE` with the `build_image` fun.
-    build = FALSE,
-
-    #' @field include_py Set to install python and reticulate
-    include_py = FALSE,
-
-    #' @field include_pyenv Set to install python environment
-    include_pyenv = FALSE,
-
-    #' @field include_tensor Set to include tensor
-    include_tensor = FALSE,
-
-    #' @field include_geo Set to include geospatial R packages in addition to the packages installed in `rocker/verse``
-    include_geo = FALSE,
-
-    #' @field include_quarto Set to install quarto
-    include_quarto = FALSE,
-
-    #' @field include_tex Set to install tex publishing
-    include_tex = FALSE,
-
-    #' @field include_julia Set to install julia
-    include_julia = FALSE,
-
-    #' @field include_jupyter Set to add jupyter
-    include_jupyter = FALSE,
-
-    #' @field include_tidy Set to include tidyverse packages R packages and their dependencies apt packages.
-    #' e.g. the tidyverse package, the devtools package, the rmarkdown package, some R Database Interface packages,
-    #' the data.table package, the fst package, and the Apache Arrow R package.
-    include_tidy = FALSE,
-
-    #' @field include_verse Set to include TeX Live and some publishing-related R packages,
-    #' in addition to the packages installed in `rocker/tidyverse`.
-    include_verse = FALSE,
-
-    #' @field include_pandoc Set to include pandoc.
-    include_pandoc = FALSE,
-
-    #' @field include_shiny Set to include shiny server.
-    include_shiny = FALSE,
-
-    #' Start a ContainR
-    #'
     #' @description
     #' Initialise and build a new `containr` image from a RStudio Rocker image.
     #'
-    #' @return R6 object with configured build settings.
+    #' @return R6 object with configured build settings as meta data and build image.
     #'
     #' @param image Repository Name of rocker image from [data_rocker_table]. Defaults to
     #' the `rstudio` stack `rocker/rstudio:latest`. For more information about each stack
@@ -183,10 +108,14 @@ containr <- R6::R6Class("containr",
     #'
     #' @param include_shiny Install Shiny server`Untested`
     #'
+    #' @export
+    #'
     initialize = function(image = "rstudio", name = NULL, tag = NULL, packages = "none", dockerfile = NULL,
       copy = FALSE, preview = TRUE, build = FALSE, include_py = FALSE, include_pyenv = FALSE,
       include_tensor = FALSE, include_geo = FALSE, include_quarto = FALSE, include_tex = FALSE, include_julia = FALSE,
       include_jupyter = FALSE, include_tidy = FALSE, include_verse = FALSE, include_pandoc = FALSE, include_shiny = FALSE){
+
+      private$setup_system()
 
       self$set_name(name)
       self$set_tag(tag)
@@ -323,8 +252,8 @@ containr <- R6::R6Class("containr",
     set_copy = function(copy){
       self$copy <- copy
       private$COPY <-  self$copy
-      private$LOCAL_DIR <- fs::path_wd()
-      private$LOCAL_DIR_NAME <- basename(fs::path_wd())
+      #private$LOCAL_DIR <- fs::path_wd()
+      #private$LOCAL_DIR_NAME <- basename(fs::path_wd())
     },
 
     #' @description
@@ -510,7 +439,7 @@ containr <- R6::R6Class("containr",
         containr = list(name = private$containr_name,
                         tag = self$tag),
         base_image = private$containr_image,
-        created = private$containr_created,
+        image_created = private$containr_created,
         image_Id = private$containr_id,
         packages = list(unknown = list(Name = private$meta_unknown,
                                        Version = private$meta_unknown_vers),
@@ -520,7 +449,10 @@ containr <- R6::R6Class("containr",
                                     Version = private$meta_cran_vers)),
         recipe = private$inst_dockerfile,
         tarfile = private$packaged_tar_info,
-        log = private$out)
+        log = private$out,
+        system_info = list(System_Name = sys_name,
+                   System = sys_machine,
+                   System_Version = sys_version))
       return(meta)
     },
 
@@ -528,14 +460,13 @@ containr <- R6::R6Class("containr",
     #' This will take the `view_meta()` information and save it to the `containr` directory.
     save_json = function(){
       file_path <- paste0("containr/", basename(fs::path_wd()), ".json")
-      #jsonlite::toJSON(self$view_meta(), pretty = TRUE)
-      jsonlite::write_json(self$view_meta(), path = file_path)
+      jsonlite::toJSON(self$view_meta(), pretty = TRUE)
+      #jsonlite::write_json(self$view_meta(), path = file_path)
     }
 
   ),
 
-  # Private Functions -------------------------------------------------------
-
+# Private  ----------------------------------------------------------------
 
   private = list(
 
@@ -586,6 +517,18 @@ containr <- R6::R6Class("containr",
     meta_cran = NULL,
     meta_cran_vers = NULL,
     packaged_tar_info = NULL,
+
+
+# System Settings ---------------------------------------------------------
+
+    setup_system = function(){
+      private$sys_name <- Sys.info()[["sysname"]]
+      private$sys_machine <- Sys.info()[["machine"]]
+      private$sys_version <- Sys.info()[["version"]]
+      private$sys_osname <- sessioninfo::os_name()
+      private$LOCAL_DIR <- fs::path_wd()
+      private$LOCAL_DIR_NAME <- basename(fs::path_wd()) # project directory
+    },
 
     # Build Process Functions -------------------------------------------------
 

@@ -5,8 +5,6 @@
 \title{docker Class Object}
 \description{
 A R6 Docker class as a wrapper for the docker commands.
-
-Docker System Wrapper WPI
 }
 \section{Methods}{
 \subsection{Public methods}{

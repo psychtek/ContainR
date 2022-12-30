@@ -6,13 +6,17 @@
 \alias{_PACKAGE}
 \title{containr Class Object}
 \description{
-A R6 class object of \code{containr} that sets up a object to launch a defined rocker
-containr in a browser. This function creates a dockerfile based off the rocker version image stacks and reads
-from session information to install \code{loaded }, \code{installed} \(or \code{none}\) R libraries. The internal \code{install2.r} handles
-additional package installs and will skip already installed packages on the rocker stack image. The final \code{Dockerfile}
-can be used to build a container image with your development environment.
+A R6 class object of \code{containr}
 
 To learn more about \pkg{containr}, start with the vignettes: \code{browseVignettes(package = "containr")}
+}
+\details{
+The general concept of this package is to aid in containerization of a workflow.
+A workflow could be a simple analysis script to a complex pipeline however, capturing
+the system ecosystem with all the additional libraries and packages are often an afterthought.
+\code{ContainR} package is an attempt to be an easier implementation of Rstudio containers ported
+from the cool developers at \url{https://rocker-project.org/images/}. This package is both a wrapper
+with Docker support to build an image and clone a workflow and packages into a Rstudio image.
 }
 \section{Rockered}{
 
@@ -20,16 +24,6 @@ Creates a new \code{containr} object based on one of
 the \url{https://rocker-project.org/images/}.
 The \code{DISABLE_AUTH=TRUE}has been set as default so each session logs in direct without needing
 a password.
-}
-
-\section{Computational Reproducibility}{
-
-The general concept of this package is to aid in containerization of a workflow.
-A workflow could be a simple analysis script to a complex pipeline however, capturing
-the system ecosystem with all the additional libraries and packages are often an afterthought.
-\code{ContainR} package is an attempt to be an easier implementation of Rstudio containers ported
-from the cool developers at \url{https://rocker-project.org/images/}. This package is both a wrapper
-with Docker support to build an image and clone a workflow and packages into a Rstudio image.
 }
 
 \section{Setup}{
@@ -72,58 +66,6 @@ Useful links:
 
 }
 \keyword{internal}
-\section{Public fields}{
-\if{html}{\out{<div class="r6-fields">}}
-\describe{
-\item{\code{image}}{Name of the image from either the \link{data_rocker_table} or in docker register.
-Additional packages can be setup to install with the \code{include_} flags.}
-
-\item{\code{name}}{Name of the containr when launched. Defaults to the active Rstudio project name.}
-
-\item{\code{tag}}{Tag of image defaults to \code{latest} if nothing set.}
-
-\item{\code{packages}}{Provide a string of either \code{loaded}, \code{installed} or \code{none}.}
-
-\item{\code{dockerfile}}{Location of the Dockerfile. Is set to \verb{containr/Dockerfile/} directory.}
-
-\item{\code{copy}}{Hard copy the current project working directory to build and setup directory on the image.}
-
-\item{\code{preview}}{Preview the image with volume mounts of the current project working directory.
-This will clone local config and panel settings for testing in the session and will
-automatically switch off when building a new image.}
-
-\item{\code{build}}{Default is \code{FALSE}. Set to \code{TRUE} with the \code{build_image} fun.}
-
-\item{\code{include_py}}{Set to install python and reticulate}
-
-\item{\code{include_pyenv}}{Set to install python environment}
-
-\item{\code{include_tensor}}{Set to include tensor}
-
-\item{\code{include_geo}}{Set to include geospatial R packages in addition to the packages installed in `rocker/verse``}
-
-\item{\code{include_quarto}}{Set to install quarto}
-
-\item{\code{include_tex}}{Set to install tex publishing}
-
-\item{\code{include_julia}}{Set to install julia}
-
-\item{\code{include_jupyter}}{Set to add jupyter}
-
-\item{\code{include_tidy}}{Set to include tidyverse packages R packages and their dependencies apt packages.
-e.g. the tidyverse package, the devtools package, the rmarkdown package, some R Database Interface packages,
-the data.table package, the fst package, and the Apache Arrow R package.}
-
-\item{\code{include_verse}}{Set to include TeX Live and some publishing-related R packages,
-in addition to the packages installed in \code{rocker/tidyverse}.}
-
-\item{\code{include_pandoc}}{Set to include pandoc.}
-
-\item{\code{include_shiny}}{Set to include shiny server.
-Start a ContainR}
-}
-\if{html}{\out{</div>}}
-}
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
@@ -239,7 +181,7 @@ current settings with the \code{print()} method and then \code{build_image(TRUE)
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-R6 object with configured build settings.
+R6 object with configured build settings as meta data and build image.
 }
 }
 \if{html}{\out{<hr>}}

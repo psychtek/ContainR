@@ -1,4 +1,3 @@
-#' @include containr.R
 #' @title docker Class Object
 #'
 #' @description
@@ -12,8 +11,6 @@ docker <- R6::R6Class(
 
   public = list(
 
-    #' Docker System Wrapper WPI
-    #'
     #' @description
     #' Work in progress: Eventually will be part of the containr class.
     #'
