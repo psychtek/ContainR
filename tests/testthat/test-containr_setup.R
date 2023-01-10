@@ -1,5 +1,3 @@
-
-
 test_that("Setup dockerfile build ", {
 
   withr::with_tempdir({
@@ -26,6 +24,24 @@ test_that("Setup dockerfile build ", {
   expect_message(docker_file$build_image(TRUE), "Success!")
   expect_equal(docker_file$status(), "Not Running")
   expect_true(docker_file$build)
+  expect_equal(docker_file$name, "testing")
+  expect_equal(docker_file$packages, "none")
+  expect_equal(docker_file$image, "rocker/rstudio:latest")
+
+  expect_false(docker_file$inc_py)
+  expect_false(docker_file$inc_pyenv)
+  expect_false(docker_file$inc_tensor)
+  expect_false(docker_file$inc_geo)
+  expect_false(docker_file$inc_quarto)
+  expect_false(docker_file$inc_tex)
+  expect_false(docker_file$inc_julia)
+  expect_false(docker_file$inc_jupyter)
+  expect_false(docker_file$inc_tidy)
+  expect_false(docker_file$inc_verse)
+  expect_false(docker_file$inc_pandoc)
+  expect_false(docker_file$inc_shiny)
+
+  # remove testing image
   system("docker rmi testing")
 },
   clean = TRUE)

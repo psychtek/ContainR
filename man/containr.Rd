@@ -37,7 +37,8 @@ to containerize your project.
  packages = "loaded", include_py = TRUE)
 }\if{html}{\out{</div>}}
 
-Then use the \code{build_image(TRUE)} to flag the build process
+Then use the \code{build_image(TRUE)} to flag the build process. Depending on how many dependencies
+are needed or packages to install, this may take some time.
 
 \if{html}{\out{<div class="sourceCode R">}}\preformatted{ cont$build_image(TRUE)
  cont$print()

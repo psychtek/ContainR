@@ -27,7 +27,8 @@
 #' cont <- containr$new(image = "rstudio", name = "projectname", tag = "latest",
 #'  packages = "loaded", include_py = TRUE)
 #' ```
-#' Then use the `build_image(TRUE)` to flag the build process
+#' Then use the `build_image(TRUE)` to flag the build process. Depending on how many dependencies
+#' are needed or packages to install, this may take some time.
 #' ```R
 #'  cont$build_image(TRUE)
 #'  cont$print()
@@ -408,8 +409,8 @@ containr <- R6::R6Class("containr",
         },
 
         "{.strong | Build Status}" = ifelse(isTRUE(self$build),
-          cli::col_green(self$build),
-          cli::col_yellow(self$build)),
+          cli::col_green("Image Built: {.var {private$containr_created}}"),
+          cli::col_yellow("Image Not Built")),
 
         "{.strong | Dockerfile}" = cli::style_hyperlink("{.file containr/Dockerfile}",
           fs::path_real(private$containr_dockerfile)),
@@ -450,9 +451,9 @@ containr <- R6::R6Class("containr",
         recipe = private$inst_dockerfile,
         tarfile = private$packaged_tar_info,
         log = private$out,
-        system_info = list(System_Name = sys_name,
-                   System = sys_machine,
-                   System_Version = sys_version))
+        system_info = list(System_Name = private$sys_name,
+                   System = private$sys_machine,
+                   System_Version = private$sys_version))
       return(meta)
     },
 
@@ -517,6 +518,9 @@ containr <- R6::R6Class("containr",
     meta_cran = NULL,
     meta_cran_vers = NULL,
     packaged_tar_info = NULL,
+    sys_name = NULL,
+    sys_machine = NULL,
+    sys_version = NULL,
 
 
 # System Settings ---------------------------------------------------------
@@ -596,132 +600,146 @@ containr <- R6::R6Class("containr",
       }
     },
 
-    setup_packages = function(){
-      packages <- private$containr_packages
-      bash_file <- "containr/scripts/install_additional.sh"
-      # TODO set packages option to use renv file
-      if(packages %in% "none"){
-        private$reset_dir()
-        private$create_directories()
-      } else if(packages %in% c("loaded", "installed")){
+setup_packages = function(){
+  packages <- private$containr_packages
+  bash_file <- "containr/scripts/install_additional.sh"
 
-        cli::cli_h1("Setting Package Preferences")
-        private$create_directories()
-        package_df <- sessioninfo::package_info(pkgs = packages)
+  if(packages %in% "none"){
+    private$reset_dir()
+    private$create_directories()
+  } else if(packages %in% c("loaded", "installed")){
 
-        packs <- dplyr::tibble(Package = package_df$package,
-          Version = package_df$ondiskversion,
-          Source = package_df$source)
+    cli::cli_h1("Setting Package Preferences")
+    private$create_directories()
+    package_df <- sessioninfo::package_info(pkgs = packages)
 
-        # CRAN Packages
-        CRAN <- packs |>
-          dplyr::filter(Source == stringr::str_match_all(Source,
-            pattern = "CRAN \\(R \\d.\\d.\\d\\)"))
+    packs <- dplyr::tibble(Package = package_df$package,
+                           Version = package_df$ondiskversion,
+                           Source = package_df$source)
 
-        # trailing slash in bash file so hack fix
-        cran_packs_first <- paste0("\t", CRAN$Package[0 -length(CRAN$Package)], " \\")
-        cran_packs_last <- paste0("\t", CRAN$Package[length(CRAN$Package) - 0], "")
+    # CRAN Packages
+    CRAN <- packs |>
+      dplyr::filter(Source == stringr::str_match_all(Source,
+                                                     pattern = "CRAN \\(R \\d.\\d.\\d\\)"))
 
-        # GitHub Packages
-        Other <- packs |>
-          dplyr::filter(!Package %in% CRAN$Package) |>
-          dplyr::filter(Source != "local") |>
-          dplyr::mutate(Source = stringr::str_extract_all(Source,
-            pattern = "(.*?)@",
-            simplify = TRUE)) |>
-          dplyr::mutate(Source = stringr::str_extract_all(Source,
-            pattern = "\\(([\\s\\S]*)$",
-            simplify = TRUE)) |>
-          dplyr::mutate(Source = stringr::str_remove_all(Source,
-            pattern = "\\((.*?)")) |>
-          dplyr::mutate(Source = stringr::str_remove_all(Source,
-            pattern = "@"))
+    # trailing slash in bash file so hack fix
+    cran_packs_first <- paste0("\t", CRAN$Package[0 -length(CRAN$Package)], " \\")
+    cran_packs_last <- paste0("\t", CRAN$Package[length(CRAN$Package) - 0], "")
 
-        not_installed <- Other |>
-          dplyr::filter(Source == "") |>
-          dplyr::select(-Source)
+    # GitHub Packages
+    Other <- packs |>
+      dplyr::filter(!Package %in% CRAN$Package) |>
+      dplyr::filter(Source != "local") |>
+      dplyr::mutate(Source = stringr::str_extract_all(Source,
+                                                      pattern = "(.*?)@",
+                                                      simplify = TRUE)) |>
+      dplyr::mutate(Source = stringr::str_extract_all(Source,
+                                                      pattern = "\\(([\\s\\S]*)$",
+                                                      simplify = TRUE)) |>
+      dplyr::mutate(Source = stringr::str_remove_all(Source,
+                                                     pattern = "\\((.*?)")) |>
+      dplyr::mutate(Source = stringr::str_remove_all(Source,
+                                                     pattern = "@"))
 
-        Github <- Other |>
-          dplyr::filter(Source != "")
+    not_installed <- Other |>
+      dplyr::filter(Source == "") |>
+      dplyr::select(-Source)
 
-        if(nrow(not_installed) > 0){
-          private$meta_unknown <- not_installed$Package
-          private$meta_unknown_vers <- not_installed$Version
-          cli::cli_alert_warning("{ {nrow(not_installed)}} Unknown Source Package{?s}")
-          cli::cli_alert_warning("{.val {not_installed$Package}}")
-        }
+    Github <- Other |>
+      dplyr::filter(Source != "")
 
-        if(nrow(Github) > 0){
-          private$meta_github <- Github$Package
-          private$meta_github_vers <- Github$Version
-          cli::cli_alert_info("Including { {nrow(Github)}} GitHub Package{?s}")
-          cli::cli_alert_info("{.val {Github$Package}}")
-        }
+    if(nrow(not_installed) > 0){
+      private$meta_unknown <- not_installed$Package
+      private$meta_unknown_vers <- not_installed$Version
+      cli::cli_alert_warning("{ {nrow(not_installed)}} Unknown Source Package{?s}")
+      cli::cli_alert_warning("{.val {not_installed$Package}}")
+    }
 
-        if(nrow(CRAN) > 0){
-          private$meta_cran <- CRAN$Package
-          private$meta_cran_vers <- CRAN$Version
-          cli::cli_alert_info("Including { {nrow(CRAN)}} CRAN Package{?s}")
-          cli::cli_alert_info("{.val {CRAN$Package}}")
-        }
+    if(nrow(Github) > 0){
+      private$meta_github <- Github$Package
+      private$meta_github_vers <- Github$Version
+      cli::cli_alert_info("Including { {nrow(Github)}} GitHub Package{?s}")
+      cli::cli_alert_info("{.val {Github$Package}}")
+    }
 
-        # Command layout for bash script
-        installR_script <- paste(c(
-          paste("#!/bin/bash"),
-          paste(""),
-          paste("set -e"),
-          paste(""),
-          paste("NCPUS=${NCPUS:--1}"),
-          paste(""),
-          paste("CRAN=${1:-${CRAN:-\"https://cran.r-project.org\"}}"),
-          paste(""),
-          paste("ARCH=$(uname -m)"),
-          paste(""),
-          paste("export DEBIAN_FRONTEND=noninteractive"),
-          paste(""),
-          paste("function apt_install() {"),
-          paste("\tif ! dpkg -s \"$@\" >/dev/null 2>&1; then"),
-          paste("\t\tif [ \"$(find /var/lib/apt/lists/* | wc -l)\" = \"0\" ]; then"),
-          paste("\t\t\tapt-get update"),
-          paste("\t\tfi"),
-          paste("\t\tapt-get install -y --no-install-recommends \"$@\""),
-          paste("\tfi"),
-          paste("}"),
-          paste(""),
-          paste("UBUNTU_VERSION=$(lsb_release -sc)"),
-          paste("CRAN_SOURCE=${CRAN/\"__linux__/$UBUNTU_VERSION/\"/\"\"}"),
-          paste(""),
-          paste("if [ \"$ARCH\" = \"aarch64\" ]; then"),
-          paste("\tCRAN=$CRAN_SOURCE"),
-          paste("fi"),
-          paste(""),
-          if(nrow(Github) > 0) {
-            c(paste("Rscript -e \"install.packages(c('remotes'), repos='${CRAN_SOURCE}')\""),
-              paste("\necho -e 'Installing GitHub Packages'\n "),
-              paste("Rscript -e", paste("\"remotes::install_github(\'",  Github$Source , "\')\" ", sep = "") ," "))
-          },
-          paste(""),
-          paste("install2.r --error --skipinstalled -n \"$NCPUS\" \\"),
-          paste(cran_packs_first),
-          paste(cran_packs_last),
-          paste(""),
-          paste("rm -rf /var/lib/apt/lists/*"),
-          paste("rm -rf /tmp/downloaded_packages"),
-          paste("strip /usr/local/lib/R/site-library/*/libs/*.so"),
-          paste(""),
-          paste("echo -e \"\nFinished intalling additional packages!\""),
-          paste("")
-        ),
-          collapse = "\n")
+    if(nrow(CRAN) > 0){
+      private$meta_cran <- CRAN$Package
+      private$meta_cran_vers <- CRAN$Version
+      cli::cli_alert_info("Including { {nrow(CRAN)}} CRAN Package{?s}")
+      cli::cli_alert_info("{.val {CRAN$Package}}")
+    }
 
-        writeLines(installR_script, con = bash_file, sep = "")
+    # Command layout for bash script
+    installR_script <- paste(c(
+      paste("#!/bin/bash"),
+      paste(""),
+      paste("set -e"),
+      paste(""),
+      paste("NCPUS=${NCPUS:--1}"),
+      paste(""),
+      paste("CRAN=${1:-${CRAN:-\"https://cran.r-project.org\"}}"),
+      paste(""),
+      paste("ARCH=$(uname -m)"),
+      paste(""),
+      paste("export DEBIAN_FRONTEND=noninteractive"),
+      paste(""),
+      paste("function apt_install() {"),
+      paste("\tif ! dpkg -s \"$@\" >/dev/null 2>&1; then"),
+      paste("\t\tif [ \"$(find /var/lib/apt/lists/* | wc -l)\" = \"0\" ]; then"),
+      paste("\t\t\tapt-get update"),
+      paste("\t\tfi"),
+      paste("\t\tapt-get install -y --no-install-recommends \"$@\""),
+      paste("\tfi"),
+      paste("}"),
+      paste(""),
+      paste("UBUNTU_VERSION=$(lsb_release -sc)"),
+      paste("CRAN_SOURCE=${CRAN/\"__linux__/$UBUNTU_VERSION/\"/\"\"}"),
+      paste(""),
+      paste("if [ \"$ARCH\" = \"aarch64\" ]; then"),
+      paste("\tCRAN=$CRAN_SOURCE"),
+      paste("fi"),
+      paste(""),
+      paste("Rscript -e \"install.packages(c('remotes', 'pak'), repos='${CRAN_SOURCE}')\""),
+      paste(""),
+      paste("UBUNTU_RELEASE=$(lsb_release -sr)"),
+      paste(""),
+      paste("pkg_req=$(Rscript -e \"pak::pkg_system_requirements(",
+            paste0("c(\'", paste0(CRAN$Package, collapse = "\', \'"), "\')"),
+            ", ",
+            "\'ubuntu', ",
+            "\'${UBUNTU_RELEASE}') |>
+            gsub('apt-get|-y|install', '', x = _) |>
+            trimws(x = _, 'both') |>
+            cat()\") ", sep = ""),
+      paste(""),
+      paste("echo -e \"Installing System Requirements... \" "),
+      paste("apt_install $pkg_req"),
+      paste(""),
+      if(nrow(Github) > 0) {
+        c(paste("\necho -e 'Installing GitHub Packages'\n "),
+          paste("Rscript -e", paste("\"remotes::install_github(\'",  Github$Source , "\', ", "\'", Github$Version, "\'", ")\" ", sep = "") ," "))
+      },
+      paste(""),
+      paste("\necho -e 'Installing CRAN Packages'\n "),
+      paste("Rscript -e ", "\"remotes::install_version('",CRAN$Package,"', version = '",CRAN$Version, "', repos='${CRAN_SOURCE}')\"", sep = ""),
+      paste(""),
+      paste("rm -rf /var/lib/apt/lists/*"),
+      paste("rm -rf /tmp/downloaded_packages"),
+      paste("strip /usr/local/lib/R/site-library/*/libs/*.so"),
+      paste(""),
+      paste("echo -e \"Finished intalling additional packages!\""),
+      paste("")
+    ),
+    collapse = "\n")
 
-        if(length(readLines(bash_file)) > 0){
-          fs::dir_tree("containr")
-          cli::cli_alert_success("Package Installs Script Updated: {.path {bash_file}}")
-        }
-      }
-    },
+    writeLines(installR_script, con = bash_file, sep = "")
+
+    if(length(readLines(bash_file)) > 0){
+      fs::dir_tree("containr")
+      cli::cli_alert_success("Package Installs Script Updated: {.path {bash_file}}")
+    }
+  }
+},
 
     create_directories = function(){
 
