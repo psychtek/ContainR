@@ -5,7 +5,6 @@ test_that("Setup dockerfile build ", {
 
   docker_file <- containr$new(name = "testing",
     image = "rstudio",
-    #dockerfile = "containr/Dockerfile",
     packages = "none",
     tag = "latest",
     build = FALSE)
@@ -28,18 +27,18 @@ test_that("Setup dockerfile build ", {
   expect_equal(docker_file$packages, "none")
   expect_equal(docker_file$image, "rocker/rstudio:latest")
 
-  expect_false(docker_file$inc_py)
-  expect_false(docker_file$inc_pyenv)
-  expect_false(docker_file$inc_tensor)
-  expect_false(docker_file$inc_geo)
-  expect_false(docker_file$inc_quarto)
-  expect_false(docker_file$inc_tex)
-  expect_false(docker_file$inc_julia)
-  expect_false(docker_file$inc_jupyter)
-  expect_false(docker_file$inc_tidy)
-  expect_false(docker_file$inc_verse)
-  expect_false(docker_file$inc_pandoc)
-  expect_false(docker_file$inc_shiny)
+  expect_null(docker_file$inc_py)
+  expect_null(docker_file$inc_pyenv)
+  expect_null(docker_file$inc_tensor)
+  expect_null(docker_file$inc_geo)
+  expect_null(docker_file$inc_quarto)
+  expect_null(docker_file$inc_tex)
+  expect_null(docker_file$inc_julia)
+  expect_null(docker_file$inc_jupyter)
+  expect_null(docker_file$inc_tidy)
+  expect_null(docker_file$inc_verse)
+  expect_null(docker_file$inc_pandoc)
+  expect_null(docker_file$inc_shiny)
 
   # remove testing image
   system("docker rmi testing")
@@ -53,7 +52,6 @@ test_that("Creates Dockerfiles and folders", {
   withr::with_tempdir({
     docker_file <- containr$new(name = "testing",
       image = "rstudio",
-      #dockerfile = "containr/Dockerfile",
       packages = "none",
       tag = "latest",
       build = FALSE)
@@ -62,26 +60,6 @@ test_that("Creates Dockerfiles and folders", {
   },
     clean = TRUE)
 })
-
-#
-# test_that("Set config flags for docker build", {
-#
-#   withr::with_tempdir({
-#     docker_file <- containr$new(name = "testing",
-#       image = "rstudio",
-#       dockerfile = "docker/Dockerfile",
-#       packages = "none",
-#       tag = "latest",
-#       build = FALSE)
-#
-#     expect_true(docker_file$set_python(TRUE))
-#     expect_true(docker_file$set_login(TRUE))
-#     expect_true(docker_file$set_local(TRUE))
-#
-#   },
-#     clean = TRUE)
-# })
-
 
 test_that("Docker commands work", {
 
@@ -109,7 +87,6 @@ test_that("Change containr settings", {
   withr::with_tempdir({
     docker_file <- containr$new(name = "testing",
       image = "rstudio",
-      #dockerfile = "containr/Dockerfile",
       packages = "none",
       tag = "latest",
       build = FALSE)
@@ -126,7 +103,6 @@ test_that("Errors on non rocker image", {
   withr::with_tempdir({
     expect_error(containr$new(name = "testing",
       image = "none",
-      #dockerfile = "containr/Dockerfile",
       packages = "none",
       tag = "latest",
       build = FALSE))
