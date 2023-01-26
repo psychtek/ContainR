@@ -142,7 +142,7 @@ containr <- R6::R6Class("containr",
       self$set_packages(packages)
       private$setup_packages()
       private$create_dockerfile()
-      self$build = build
+      if (build) self$build()
 
     },
 
@@ -310,25 +310,32 @@ containr <- R6::R6Class("containr",
       if(isFALSE(fs::file_exists(private$containr_dockerfile))){
         cli::cli_abort("No Dockerfile could be found")
       }
-      # TODO set for false builds
+
       self$build <- build
       if(isTRUE(build)){
-        processx::run(command = "docker",
-          args = c("build",
-            "--no-cache=true",
-            "-t",
-            private$containr_name,
-            "-f",
-            private$containr_dockerfile,
-            "."),
-          echo_cmd = TRUE,
-          echo = TRUE,
-          spinner = TRUE)
-
-        cli::cli_alert_success("Success!")
+        tryCatch({
+          result <- processx::run(command = "docker",
+                                  args = c("build",
+                                           "--no-cache=true",
+                                           "-t",
+                                           private$containr_name,
+                                           "-f",
+                                           private$containr_dockerfile,
+                                           "."),
+                                  echo_cmd = TRUE,
+                                  echo = TRUE,
+                                  spinner = TRUE)
+          if (result$status == 0) {
+            cli::cli_alert_success("Success!")
+            self$build <- TRUE
+            private$containr_image <- private$containr_name
+          } else {
+            cli::cli_alert_error("build failed")
+          }
+        }, error = function(err) {
+          cli::cli_alert_error(err)
+        })
       }
-      self$build <- TRUE
-      private$containr_image <- private$containr_name
     },
 
     #' @description
@@ -491,10 +498,10 @@ containr <- R6::R6Class("containr",
     package = NULL,
     LOCAL_DIR = NULL,
     LOCAL_DIR_NAME = NULL,
-    R_HOME_DIR = "/home/rstudio/",
-    R_CONFIG_DIR = "/home/rstudio/.config/rstudio",
-    R_ENV_DIR = "/home/rstudio/.Renviron",
-    R_PROF = "/home/rstudio/.Rprofile",
+    R_HOME_DIR = "home/rstudio",
+    R_CONFIG_DIR = "home/rstudio/.config/rstudio",
+    R_ENV_DIR = "home/rstudio/.Renviron",
+    R_PROF = "home/rstudio/.Rprofile",
     inst_dockerfile = NULL,
     inc_py = FALSE,
     inc_pyenv = FALSE,
@@ -646,7 +653,8 @@ setup_packages = function(){
       dplyr::select(-Source)
 
     Github <- Other |>
-      dplyr::filter(Source != "")
+    dplyr::mutate(Source = stringr::str_extract(Source, "(.*?)@")) |>
+    dplyr::filter(!is.na(Source))
 
     if(nrow(not_installed) > 0){
       private$meta_unknown <- not_installed$Package
@@ -726,7 +734,7 @@ setup_packages = function(){
       paste("rm -rf /var/lib/apt/lists/*"),
       paste("rm -rf /tmp/downloaded_packages"),
       paste("strip /usr/local/lib/R/site-library/*/libs/*.so"),
-      paste(""),
+      paste("apt-get autoremove -y"),
       paste("echo -e \"Finished intalling additional packages!\""),
       paste("")
     ),
@@ -815,13 +823,13 @@ setup_packages = function(){
       PORTS = "8787:8787"
 
       CONTAINR_NAME = LOCAL_DIR_NAME
-      IMG_NAME = glue::glue(private$containr_image)
+      IMG_NAME = shQuote(private$containr_image)
       # TODO setup to allow for different tag objects. One for image build and one for rocker versions
 
-      vol_paths <- c(paste0(LOCAL_DIR, ":", private$R_HOME_DIR, LOCAL_DIR_NAME),
-        paste0(LOCAL_R_HOME, ":", private$R_CONFIG_DIR),
-        paste0(LOCAL_RENV, ":", private$R_ENV_DIR),
-        paste0(LOCAL_R_PROF, ":", private$R_PROF))
+      vol_paths <- c(file.path(LOCAL_DIR, ":", private$R_HOME_DIR, LOCAL_DIR_NAME),
+        file.path(LOCAL_R_HOME, ":", private$R_CONFIG_DIR),
+        file.path(LOCAL_RENV, ":", private$R_ENV_DIR),
+        file.path(LOCAL_R_PROF, ":", private$R_PROF))
 
       VOLUMES <- unlist(purrr::map(vol_paths, function(x) c("-v", x)))
 
@@ -842,65 +850,76 @@ setup_packages = function(){
 
     containr_start = function(){
 
-      if(isTRUE(private$connected)) cli::cli_abort("Containr Already Started")
+  if(isTRUE(private$connected)) cli::cli_abort("Containr Already Started")
 
-      cmd <- private$setup_command()
+  cmd <- private$setup_command()
 
-      private$process <- processx::process$new(
-        command = "docker",
-        args = cmd,
-        supervise = TRUE,
-        stdout = tempfile("containr-stdout-", fileext = ".log"),
-        stderr = tempfile("containr-stderr-", fileext = ".log")
-      ) # TODO this still flags as running when docker fails
+  private$process <- processx::process$new(
+    command = "docker",
+    args = cmd,
+    supervise = TRUE,
+    stdout = tempfile("containr-stdout-", fileext = ".log"),
+    stderr = tempfile("containr-stderr-", fileext = ".log")
+  )
 
-      Sys.sleep(3)
-
-      if(private$process$is_alive()) {
-        # private$process$get_error_file()
-        private$out <-  private$process$get_output_file()
-
-        # Reset State
-        private$connected <- TRUE
-        assign("process", private$process, envir = parent.frame())
-        private$get_containr_data()
-      }
-    },
+  #use tryCatch to catch any errors that may occur when attempting to start a container
+  tryCatch({
+    # wait for the container to start by checking its status using the "docker ps" command
+    while(!processx::run(command = "docker", args = c("ps", "-q", "--filter", paste0("name=", private$containr_name)), echo = FALSE)$status == 0) {
+      Sys.sleep(1)
+    }
+    private$out <-  private$process$get_output_file()
+    # Reset State
+    private$connected <- TRUE
+    assign("process", private$process, envir = parent.frame())
+    private$get_containr_data()
+  }, error = function(e) {
+    message(e)
+    private$process$kill()
+  }
+  )
+},
 
     containr_stop = function(){
-      if(isFALSE(private$connected)) cli::cli_abort("Nothing to stop")
-      stopifnot(inherits(private$process, "process"))
+    if(!private$connected) cli::cli_abort("Nothing to stop")
+    stopifnot(inherits(private$process, "process"))
 
-      processx::run(command = "docker",
-        args = c("stop",
-          private$containr_name),
-        error_on_status = TRUE,
-        echo = FALSE)
+    tryCatch({
+        processx::run(command = "docker",
+          args = c("stop", private$containr_name),
+          error_on_status = TRUE,
+          echo = FALSE)
+    }, error = function(e) {
+        message("The container is already stopped.")
+    })
+    if(private$process$is_alive()){
+        private$process$terminate()
+        private$process$wait()
+    }
 
-      Sys.sleep(0.5)
-
-      on.exit({
-        try(private$process$kill(),
-          silent = TRUE)
-      },
-        add = TRUE)
-      # Reset State
-      private$connected <- FALSE
-      private$containr_pid <- NULL
-      private$containr_name <- self$name
-      private$containr_image <- self$image
-      private$containr_image_run_mode <- NULL
-    },
+    private$connected <- private$process$is_alive()
+    private$containr_pid <- NULL
+    private$containr_name <- self$name
+    private$containr_image <- self$image
+    private$containr_image_run_mode <- NULL
+},
 
     containr_status = function(){
-      if(isTRUE(private$connected)){
-        status <- "Running"
-      }
-      if(isFALSE(private$connected)){
+    if(!private$connected) {
         status <- "Not Running"
-      }
-      return(status)
-    },
+    }else{
+        containr_status <- processx::run(command = "docker",
+                              args = c("ps", "-f", "name=" ,private$containr_name),
+                              error_on_status = TRUE,
+                              echo = FALSE)
+        if(containr_status$status == 0) {
+            status <- "Running"
+        }else {
+            status <- "Not Running"
+        }
+    }
+    return(status)
+},
 
     get_containr_data = function(){
 
@@ -982,7 +1001,4 @@ create_config_file <- function(proj_name){
   return(rprofile)
 
 }
-
-
-
 
