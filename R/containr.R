@@ -498,10 +498,10 @@ containr <- R6::R6Class("containr",
     package = NULL,
     LOCAL_DIR = NULL,
     LOCAL_DIR_NAME = NULL,
-    R_HOME_DIR = "home/rstudio",
-    R_CONFIG_DIR = "home/rstudio/.config/rstudio",
-    R_ENV_DIR = "home/rstudio/.Renviron",
-    R_PROF = "home/rstudio/.Rprofile",
+    R_HOME_DIR = "/home/rstudio/",
+    R_CONFIG_DIR = "/home/rstudio/.config/rstudio",
+    R_ENV_DIR = "/home/rstudio/.Renviron",
+    R_PROF = "/home/rstudio/.Rprofile",
     inst_dockerfile = NULL,
     inc_py = FALSE,
     inc_pyenv = FALSE,
@@ -826,10 +826,10 @@ setup_packages = function(){
       IMG_NAME = shQuote(private$containr_image)
       # TODO setup to allow for different tag objects. One for image build and one for rocker versions
 
-      vol_paths <- c(file.path(LOCAL_DIR, ":", private$R_HOME_DIR, LOCAL_DIR_NAME),
-        file.path(LOCAL_R_HOME, ":", private$R_CONFIG_DIR),
-        file.path(LOCAL_RENV, ":", private$R_ENV_DIR),
-        file.path(LOCAL_R_PROF, ":", private$R_PROF))
+      vol_paths <- c(paste0(LOCAL_DIR, ":", private$R_HOME_DIR, LOCAL_DIR_NAME),
+                     paste0(LOCAL_R_HOME, ":", private$R_CONFIG_DIR),
+                     paste0(LOCAL_RENV, ":", private$R_ENV_DIR),
+                     paste0(LOCAL_R_PROF, ":", private$R_PROF))
 
       VOLUMES <- unlist(purrr::map(vol_paths, function(x) c("-v", x)))
 
