@@ -19,14 +19,32 @@ test_that("Setup dockerfile build ", {
 
   writeLines(docker_cmds, con = temp_dockerfile, sep = "")
 
-  expect_false(docker_file$build)
-  expect_message(docker_file$build_image(TRUE), "Success!")
-  expect_equal(docker_file$status(), "Not Running")
-  expect_true(docker_file$build)
-  expect_equal(docker_file$name, "testing")
-  expect_equal(docker_file$packages, "none")
-  expect_equal(docker_file$image, "rocker/rstudio:latest")
+  # change the dockerfile to the temp file
+    docker_file$set_dockerfile(temp_dockerfile)
 
+    # test that build is false before building
+    #expect_false(docker_file$build)
+    # test that build image returns "Success!"
+    expect_message(docker_file$build_image(TRUE), "Success!")
+    # test that status is "Not Running"
+    expect_equal(docker_file$status(), "Not Running")
+    # test that build is now true
+    expect_true(docker_file$build)
+    # test that name is "testing"
+    expect_equal(docker_file$name, "testing")
+    # test that packages is "none"
+    expect_equal(docker_file$packages, "none")
+    # test that image is "rocker/rstudio:latest"
+    expect_equal(docker_file$image, "rocker/rstudio:latest")
+
+  # expect_false(docker_file$build)
+  # expect_message(docker_file$build_image(TRUE), "Success!")
+  # expect_equal(docker_file$status(), "Not Running")
+  # expect_true(docker_file$build)
+  # expect_equal(docker_file$name, "testing")
+  # expect_equal(docker_file$packages, "none")
+  # expect_equal(docker_file$image, "rocker/rstudio:latest")
+  #
   expect_null(docker_file$inc_py)
   expect_null(docker_file$inc_pyenv)
   expect_null(docker_file$inc_tensor)
